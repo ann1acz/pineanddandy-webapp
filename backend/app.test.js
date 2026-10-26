@@ -6,11 +6,12 @@ import { newDb } from "pg-mem";
 import request from "supertest";
 import { createApp } from "./app.js";
 import { hashPassword, verifyPassword } from "./passwords.js";
+import { InputError, recipeInput } from "./validation.js";
 
 const secret = "test-only-session-secret-not-for-deployment";
 const header = ["X-Requested-With", "pineanddandy"];
-const alice = { email: "alice@example.test", password: "correct horse battery staple", display_name: "Alice" };
-const bob = { ...alice, email: "bob@example.test", display_name: "Bob" };
+const alice = { email: "alice@example.test", password: "correct horse battery staple", display_name: "Alice", username: "alice_cooks" };
+const bob = { ...alice, email: "bob@example.test", display_name: "Bob", username: "bob_cooks" };
 const recipe = {
   title: "Lemon pasta",
   description: "A quick dinner",
@@ -25,6 +26,12 @@ let app;
 
 beforeEach(async () => {
   const db = newDb();
+  db.public.registerFunction({
+    name: "replace",
+    args: ["text", "text", "text"],
+    returns: "text",
+    implementation: (value, from, to) => value.replaceAll(from, to),
+  });
   db.public.none(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
   const adapter = db.adapters.createPg();
   pool = new adapter.Pool();
@@ -149,4 +156,175 @@ test("SQL-like input remains data and cannot change ownership", async () => {
   assert.equal(result.body.title, title);
   const profile = await agent.get("/api/profile").expect(200);
   assert.equal(result.body.user_id, profile.body.id);
+});
+
+const photo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=";
+
+test("profile photos persist, appear with recipes, remain owner-scoped and can be removed", async () => {
+  const owner = request.agent(app);
+  const other = request.agent(app);
+  await owner.post("/api/auth/register").set(...header).send(alice).expect(201);
+  await other.post("/api/auth/register").set(...header).send(bob).expect(201);
+  const fields = { display_name: alice.display_name, bio: "" };
+  await owner.patch("/api/profile").set(...header).send({ ...fields, profile_photo: photo }).expect(200);
+  assert.equal((await owner.get("/api/profile").expect(200)).body.profile_photo, photo);
+  assert.equal((await other.get("/api/profile").expect(200)).body.profile_photo, "");
+  const created = await owner.post("/api/recipes").set(...header).send({ ...recipe, visibility: "public" }).expect(201);
+  assert.equal((await other.get("/api/feed").expect(200)).body[0].author_photo, photo);
+  assert.equal((await other.get(`/api/recipes/${created.body.id}`).expect(200)).body.author_photo, photo);
+  await owner.patch("/api/profile").set(...header).send(fields).expect(200);
+  assert.equal((await owner.get("/api/profile").expect(200)).body.profile_photo, photo);
+  for (const invalid of [null, 42, "https://example.test/avatar.png", "data:image/svg+xml;base64,PHN2Zz4=", "data:image/png;base64,aGVsbG8="]) {
+    await owner.patch("/api/profile").set(...header).send({ ...fields, profile_photo: invalid }).expect(400);
+  }
+  await owner.patch("/api/profile").set(...header).send({ ...fields, profile_photo: "" }).expect(200);
+  assert.equal((await other.get("/api/feed").expect(200)).body[0].author_photo, "");
+});
+
+test("usernames are normalized, unique and editable and appear with recipe authors", async () => {
+  const agent = request.agent(app);
+  const registered = await agent.post("/api/auth/register").set(...header).send({ ...alice, username: "ALICE_COOKS" }).expect(201);
+  assert.equal(registered.body.username, "alice_cooks");
+  await request(app).post("/api/auth/register").set(...header).send({ ...bob, username: "Alice_Cooks" }).expect(409);
+  await request(app).post("/api/auth/register").set(...header).send(bob).expect(201);
+  for (const username of ["a", "with space", "with-dash", "x".repeat(41), ""]) {
+    await agent.patch("/api/profile").set(...header).send({ display_name: "Alice", bio: "", username }).expect(400);
+  }
+  await agent.patch("/api/profile").set(...header).send({ display_name: "Alice", bio: "", username: "BOB_COOKS" }).expect(409);
+  const updated = await agent.patch("/api/profile").set(...header)
+    .send({ display_name: "Alice Cook", bio: "", username: "Alice_Forages" }).expect(200);
+  assert.equal(updated.body.username, "alice_forages");
+  assert.equal((await agent.get("/api/profile").expect(200)).body.username, "alice_forages");
+  const created = await agent.post("/api/recipes").set(...header).send({ ...recipe, visibility: "public" }).expect(201);
+  const detail = (await agent.get(`/api/recipes/${created.body.id}`).expect(200)).body;
+  assert.equal(detail.author_name, "Alice Cook");
+  assert.equal(detail.author_username, "alice_forages");
+  assert.equal((await agent.get("/api/feed").expect(200)).body[0].author_username, "alice_forages");
+});
+
+test("recipe photos and categories persist through create, list, read, edit and removal", async () => {
+  const agent = request.agent(app);
+  await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
+  const extra = {
+    photos: [photo],
+    plant_types: ["Mushroom", "Herb"],
+    dish_types: ["Soup"],
+    seasons: ["Autumn"],
+    dietary_restrictions: ["Vegan", "Gluten-free"],
+  };
+  const created = await agent.post("/api/recipes").set(...header).send({ ...recipe, ...extra }).expect(201);
+  const id = created.body.id;
+  for (const result of [
+    created.body,
+    (await agent.get("/api/recipes").expect(200)).body[0],
+    (await agent.get(`/api/recipes/${id}`).expect(200)).body,
+  ]) {
+    for (const [key, value] of Object.entries(extra)) assert.deepEqual(result[key], value);
+  }
+  const updated = await agent.put(`/api/recipes/${id}`).set(...header)
+    .send({ ...recipe, ...extra, seasons: ["Spring"], photos: [] }).expect(200);
+  assert.deepEqual(updated.body.photos, []);
+  assert.deepEqual(updated.body.seasons, ["Spring"]);
+  assert.deepEqual(updated.body.plant_types, extra.plant_types);
+  const cleared = await agent.put(`/api/recipes/${id}`).set(...header).send(recipe).expect(200);
+  for (const key of Object.keys(extra)) assert.deepEqual(cleared.body[key], []);
+});
+
+test("recipe uploads and categories reject unsupported, oversized and malformed values", async () => {
+  const agent = request.agent(app);
+  await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
+  for (const extra of [
+    { photos: [photo, photo, photo, photo] },
+    { photos: ["https://example.test/photo.png"] },
+    { photos: ["data:image/svg+xml;base64,PHN2Zz4="] },
+    { photos: ["data:image/png;base64,aGVsbG8="] },
+    { photos: ["data:image/png;base64," + "A".repeat(1_398_132)] },
+    { photos: "not an array" },
+    { plant_types: [""] },
+    { seasons: Array(13).fill("Spring") },
+    { dish_types: [42] },
+    { dietary_restrictions: ["x".repeat(61)] },
+  ]) {
+    await agent.post("/api/recipes").set(...header).send({ ...recipe, ...extra }).expect(400);
+  }
+  assert.deepEqual((await agent.get("/api/recipes").expect(200)).body, []);
+});
+
+test("photo size validation accepts exactly 1 MB and rejects one byte more", () => {
+  const bytes = Buffer.alloc(1_048_577);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(bytes);
+  const atLimit = `data:image/png;base64,${bytes.subarray(0, 1_048_576).toString("base64")}`;
+  const overLimit = `data:image/png;base64,${bytes.toString("base64")}`;
+  assert.equal(recipeInput({ ...recipe, photos: [atLimit, atLimit, atLimit] }).photos.length, 3);
+  assert.throws(() => recipeInput({ ...recipe, photos: [overLimit] }), InputError);
+});
+
+test("recipe schema migration can run again without removing saved recipes", async () => {
+  const agent = request.agent(app);
+  await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
+  await agent.post("/api/recipes").set(...header).send({ ...recipe, photos: [photo] }).expect(201);
+  const schema = await readFile(new URL("./schema.sql", import.meta.url), "utf8");
+  for (const statement of schema.split(";").filter((statement) => statement.trim().startsWith("ALTER TABLE"))) {
+    await pool.query(statement);
+  }
+  const listed = await agent.get("/api/recipes").expect(200);
+  assert.equal(listed.body.length, 1);
+  assert.deepEqual(listed.body[0].photos, [photo]);
+});
+
+test("public feed shares only published recipes while mutations stay owner-only", async () => {
+  const owner = request.agent(app);
+  const other = request.agent(app);
+  await owner.post("/api/auth/register").set(...header).send(alice).expect(201);
+  await other.post("/api/auth/register").set(...header).send(bob).expect(201);
+  const privateRecipe = (await owner.post("/api/recipes").set(...header).send(recipe).expect(201)).body;
+  const publicRecipe = (await owner.post("/api/recipes").set(...header).send({ ...recipe, visibility: "public" }).expect(201)).body;
+  const feed = (await other.get("/api/feed").expect(200)).body;
+  assert.equal(feed.length, 1);
+  assert.equal(feed[0].id, publicRecipe.id);
+  assert.equal(feed[0].author_name, alice.display_name);
+  assert.equal(feed[0].is_owner, false);
+  assert.equal(feed[0].email, undefined);
+  await other.get(`/api/recipes/${privateRecipe.id}`).expect(404);
+  await other.get(`/api/recipes/${publicRecipe.id}`).expect(200);
+  await other.put(`/api/recipes/${publicRecipe.id}`).set(...header).send(recipe).expect(404);
+  await other.delete(`/api/recipes/${publicRecipe.id}`).set(...header).expect(404);
+  assert.deepEqual((await other.get("/api/recipes").expect(200)).body, []);
+  await owner.put(`/api/recipes/${publicRecipe.id}`).set(...header).send({ ...recipe, visibility: "private" }).expect(200);
+  assert.deepEqual((await other.get("/api/feed").expect(200)).body, []);
+  await other.get(`/api/recipes/${publicRecipe.id}`).expect(404);
+  assert.equal((await owner.get("/api/recipes").expect(200)).body.length, 2);
+  await owner.post("/api/recipes").set(...header).send({ ...recipe, visibility: "everyone" }).expect(400);
+  await request(app).get("/api/feed").expect(401);
+});
+
+test("bookmarks persist per user, count unique users, and never expose private recipes", async () => {
+  const owner = request.agent(app);
+  const other = request.agent(app);
+  await owner.post("/api/auth/register").set(...header).send(alice).expect(201);
+  await other.post("/api/auth/register").set(...header).send(bob).expect(201);
+  const published = (await owner.post("/api/recipes").set(...header).send({ ...recipe, visibility: "public" }).expect(201)).body;
+  const privateRecipe = (await owner.post("/api/recipes").set(...header).send(recipe).expect(201)).body;
+  const url = `/api/recipes/${published.id}/bookmark`;
+  await other.put(`/api/recipes/${privateRecipe.id}/bookmark`).set(...header).expect(404);
+  await request(app).put(url).set(...header).expect(401);
+  await other.put(url).expect(403);
+  await other.put(url).set(...header).expect(204);
+  await other.put(url).set(...header).expect(204);
+  let feed = (await other.get("/api/feed").expect(200)).body;
+  assert.equal(feed[0].bookmark_count, 1);
+  assert.equal(feed[0].bookmarked, true);
+  assert.equal((await owner.get("/api/feed").expect(200)).body[0].bookmarked, false);
+  assert.equal((await other.get("/api/bookmarks").expect(200)).body[0].id, published.id);
+  await owner.put(url).set(...header).expect(204);
+  assert.equal((await other.get("/api/feed").expect(200)).body[0].bookmark_count, 2);
+  await other.delete(url).set(...header).expect(204);
+  assert.equal((await owner.get("/api/feed").expect(200)).body[0].bookmark_count, 1);
+  await other.put(url).set(...header).expect(204);
+  await owner.put(`/api/recipes/${published.id}`).set(...header).send({ ...recipe, visibility: "private" }).expect(200);
+  assert.deepEqual((await other.get("/api/bookmarks").expect(200)).body, []);
+  await other.put(url).set(...header).expect(404);
+  assert.equal((await owner.get("/api/bookmarks").expect(200)).body.length, 1);
+  await owner.delete(`/api/recipes/${published.id}`).set(...header).expect(204);
+  assert.equal((await pool.query("SELECT * FROM recipe_bookmarks")).rows.length, 0);
 });

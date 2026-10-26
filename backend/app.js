@@ -4,10 +4,10 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { rateLimit } from "express-rate-limit";
 import { hashPassword, verifyPassword } from "./passwords.js";
-import { emailInput, InputError, objectBody, passwordInput, recipeInput, text } from "./validation.js";
+import { emailInput, InputError, objectBody, passwordInput, profilePhotoInput, recipeInput, text, usernameInput } from "./validation.js";
 
 const PgStore = connectPgSimple(session);
-const profileColumns = "id, email, display_name, bio";
+const profileColumns = "id, email, display_name, username, bio, profile_photo";
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function signIn(request, userId) {
@@ -47,7 +47,7 @@ export function createApp({
     }
     next();
   });
-  app.use("/api", express.json({ limit: "80kb" }));
+  app.use("/api", express.json({ limit: "5mb" }));
   app.use("/api", session({
     name: "pineanddandy.sid",
     secret: sessionSecret,
@@ -75,17 +75,18 @@ export function createApp({
     const email = emailInput(body);
     const password = passwordInput(body);
     const displayName = text(body, "display_name", 80);
+    const username = usernameInput(body);
     let profile;
     try {
       const result = await pool.query(
-        `INSERT INTO users (id, email, password_hash, display_name)
-         VALUES ($1, $2, $3, $4) RETURNING ${profileColumns}`,
-        [randomUUID(), email, await hashPassword(password), displayName],
+        `INSERT INTO users (id, email, password_hash, display_name, username)
+         VALUES ($1, $2, $3, $4, $5) RETURNING ${profileColumns}`,
+        [randomUUID(), email, await hashPassword(password), displayName, username],
       );
       profile = result.rows[0];
     } catch (error) {
       if (error instanceof Error && "code" in error && error.code === "23505") {
-        response.status(409).json({ error: "An account with this email already exists." });
+        response.status(409).json({ error: "This email or username is already in use." });
         return;
       }
       throw error;
@@ -143,27 +144,73 @@ export function createApp({
   });
   app.patch("/api/profile", async (request, response) => {
     const body = objectBody(request.body);
-    const result = await pool.query(
-      `UPDATE users SET display_name = $1, bio = $2 WHERE id = $3 RETURNING ${profileColumns}`,
-      [text(body, "display_name", 80), text(body, "bio", 1000, false), request.session.userId],
-    );
-    response.json(result.rows[0]);
+    const username = body.username === undefined ? response.locals.profile.username : usernameInput(body);
+    const photo = body.profile_photo === undefined ? response.locals.profile.profile_photo : profilePhotoInput(body.profile_photo);
+    try {
+      const result = await pool.query(
+        `UPDATE users SET display_name = $1, bio = $2, username = $4, profile_photo = $5 WHERE id = $3 RETURNING ${profileColumns}`,
+        [text(body, "display_name", 80), text(body, "bio", 1000, false), request.session.userId, username, photo],
+      );
+      response.json(result.rows[0]);
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "23505") {
+        response.status(409).json({ error: "This username is already in use." });
+        return;
+      }
+      throw error;
+    }
   });
 
   app.get("/api/recipes", async (request, response) => {
+    const recipes = await sharedRecipes(request.session.userId);
+    response.json(recipes.filter((recipe) => recipe.is_owner));
+  });
+  async function sharedRecipes(userId, recipeId, bookmarkedOnly = false) {
     const result = await pool.query(
-      "SELECT * FROM recipes WHERE user_id = $1 ORDER BY created_at DESC, id", [request.session.userId],
+      `SELECT recipes.*, users.display_name AS author_name, users.username AS author_username,
+       users.profile_photo AS author_photo FROM recipes
+       JOIN users ON users.id = recipes.user_id
+       WHERE (recipes.visibility = 'public' OR recipes.user_id = $1)
+       ${recipeId ? "AND recipes.id = $2" : ""}
+       ORDER BY recipes.created_at DESC, recipes.id`,
+      recipeId ? [userId, recipeId] : [userId],
     );
-    response.json(result.rows);
+    const bookmarks = await pool.query(
+      `SELECT recipe_bookmarks.user_id, recipe_bookmarks.recipe_id FROM recipe_bookmarks
+       JOIN recipes ON recipes.id = recipe_bookmarks.recipe_id
+       WHERE recipes.visibility = 'public' OR recipes.user_id = $1`, [userId],
+    );
+    const counts = new Map();
+    const saved = new Set();
+    for (const bookmark of bookmarks.rows) {
+      counts.set(bookmark.recipe_id, (counts.get(bookmark.recipe_id) ?? 0) + 1);
+      if (bookmark.user_id === userId) saved.add(bookmark.recipe_id);
+    }
+    return result.rows.filter((recipe) => !bookmarkedOnly || saved.has(recipe.id)).map((recipe) => ({
+      ...recipe,
+      bookmark_count: counts.get(recipe.id) ?? 0,
+      bookmarked: saved.has(recipe.id),
+      is_owner: recipe.user_id === userId,
+    }));
+  }
+  app.get("/api/feed", async (request, response) => {
+    const recipes = await sharedRecipes(request.session.userId);
+    response.json(recipes.filter((recipe) => recipe.visibility === "public"));
+  });
+  app.get("/api/bookmarks", async (request, response) => {
+    response.json(await sharedRecipes(request.session.userId, undefined, true));
   });
   app.post("/api/recipes", async (request, response) => {
     const recipe = recipeInput(request.body);
     const result = await pool.query(
       `INSERT INTO recipes
-       (id, user_id, title, description, ingredients, instructions, servings, prep_minutes, cook_minutes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+       (id, user_id, title, description, ingredients, instructions, servings, prep_minutes, cook_minutes,
+        photos, plant_types, dish_types, seasons, dietary_restrictions, visibility)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
       [randomUUID(), request.session.userId, recipe.title, recipe.description,
-        recipe.ingredients, recipe.instructions, recipe.servings, recipe.prep_minutes, recipe.cook_minutes],
+        recipe.ingredients, recipe.instructions, recipe.servings, recipe.prep_minutes, recipe.cook_minutes,
+        JSON.stringify(recipe.photos), JSON.stringify(recipe.plant_types), JSON.stringify(recipe.dish_types),
+        JSON.stringify(recipe.seasons), JSON.stringify(recipe.dietary_restrictions), recipe.visibility],
     );
     response.status(201).json(result.rows[0]);
   });
@@ -176,24 +223,46 @@ export function createApp({
     next();
   });
   app.get("/api/recipes/:recipeId", async (request, response) => {
-    const result = await pool.query(
-      "SELECT * FROM recipes WHERE id = $1 AND user_id = $2",
-      [request.params.recipeId, request.session.userId],
-    );
-    if (!result.rows[0]) {
+    const recipes = await sharedRecipes(request.session.userId, request.params.recipeId);
+    if (!recipes[0]) {
       response.status(404).json({ error: "Recipe not found." });
       return;
     }
-    response.json(result.rows[0]);
+    response.json(recipes[0]);
+  });
+  app.put("/api/recipes/:recipeId/bookmark", async (request, response) => {
+    const result = await pool.query(
+      `INSERT INTO recipe_bookmarks (user_id, recipe_id)
+       SELECT $1, id FROM recipes WHERE id = $2 AND (visibility = 'public' OR user_id = $1)
+       ON CONFLICT (user_id, recipe_id) DO NOTHING RETURNING recipe_id`,
+      [request.session.userId, request.params.recipeId],
+    );
+    if (!result.rows.length) {
+      const visible = await sharedRecipes(request.session.userId, request.params.recipeId);
+      if (!visible.length) {
+        response.status(404).json({ error: "Recipe not found." });
+        return;
+      }
+    }
+    response.status(204).end();
+  });
+  app.delete("/api/recipes/:recipeId/bookmark", async (request, response) => {
+    await pool.query("DELETE FROM recipe_bookmarks WHERE user_id = $1 AND recipe_id = $2",
+      [request.session.userId, request.params.recipeId]);
+    response.status(204).end();
   });
   app.put("/api/recipes/:recipeId", async (request, response) => {
     const recipe = recipeInput(request.body);
     const result = await pool.query(
       `UPDATE recipes SET title = $1, description = $2, ingredients = $3, instructions = $4,
-       servings = $5, prep_minutes = $6, cook_minutes = $7, updated_at = CURRENT_TIMESTAMP
+       servings = $5, prep_minutes = $6, cook_minutes = $7,
+       photos = $10, plant_types = $11, dish_types = $12, seasons = $13, dietary_restrictions = $14, visibility = $15,
+       updated_at = CURRENT_TIMESTAMP
        WHERE id = $8 AND user_id = $9 RETURNING *`,
       [recipe.title, recipe.description, recipe.ingredients, recipe.instructions,
-        recipe.servings, recipe.prep_minutes, recipe.cook_minutes, request.params.recipeId, request.session.userId],
+        recipe.servings, recipe.prep_minutes, recipe.cook_minutes, request.params.recipeId, request.session.userId,
+        JSON.stringify(recipe.photos), JSON.stringify(recipe.plant_types), JSON.stringify(recipe.dish_types),
+        JSON.stringify(recipe.seasons), JSON.stringify(recipe.dietary_restrictions), recipe.visibility],
     );
     if (!result.rows[0]) {
       response.status(404).json({ error: "Recipe not found." });

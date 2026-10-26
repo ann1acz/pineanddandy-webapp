@@ -1,0 +1,13 @@
+.profile-page 
+{ max-width: 480px;
+margin-inline: auto; }
+
+.profile-page .logout 
+{ margin-top: 2rem; }
+
+.profile-avatar
+{ width: 96px;
+height: 96px;
+object-fit: cover;
+border-radius: 50%;
+background: #deddd4; }

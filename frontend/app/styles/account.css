@@ -1,0 +1,9 @@
+.account-page 
+{ max-width: 1100px;
+margin: 0 auto;
+padding: 3rem 1.5rem; }
+
+@media (max-width: 540px) {
+.account-page 
+{ padding: 2rem 1rem; }
+}

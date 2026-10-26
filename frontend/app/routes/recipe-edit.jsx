@@ -1,9 +1,12 @@
 import { redirect } from "react-router";
 import { RecipeForm, saveRecipe } from "../components/recipe-form";
 import { api, formError } from "../lib/api";
+import "../styles/recipe-edit.css";
 
 export async function clientLoader({ params }) {
-  return { recipe: await api(`/recipes/${params.recipeId}`) };
+  const recipe = await api(`/recipes/${params.recipeId}`);
+  if (!recipe.is_owner) throw new Response("Only the author can edit this recipe.", { status: 403 });
+  return { recipe };
 }
 
 export async function clientAction({ params, request }) {
@@ -16,5 +19,5 @@ export async function clientAction({ params, request }) {
 }
 
 export default function EditRecipe({ loaderData, actionData }) {
-  return <section className="editor"><h1>Edit recipe</h1><RecipeForm key={loaderData.recipe.id} recipe={loaderData.recipe} error={actionData?.error} /></section>;
+  return <section className="recipe-edit-page"><h1 className="sr-only">Edit recipe</h1><RecipeForm key={loaderData.recipe.id} recipe={loaderData.recipe} error={actionData?.error} /></section>;
 }

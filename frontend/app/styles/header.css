@@ -1,0 +1,33 @@
+.site-header
+{ display: flex;
+align-items: center;
+gap: 1rem;
+width: 100%;
+margin: 0 0 -1rem;
+padding: .75rem 0rem .75rem 0;
+background: #fffef8; }
+
+.header-brand
+{ flex: 0 1 320px;
+min-width: 0; }
+
+.header-brand img
+{ display: block;
+width: 100%;
+height: auto;
+transform: translateX(-1rem);
+filter: brightness(0) saturate(100%) invert(17%) sepia(15%) saturate(1167%) hue-rotate(340deg) brightness(94%) contrast(91%); }
+
+.header-search
+{ display: grid;
+place-items: center;
+margin-left: auto;
+width: 44px;
+height: 44px;
+flex-shrink: 0; }
+
+.header-search img
+{ display: block;
+width: 24px;
+height: 24px;
+object-fit: contain; }

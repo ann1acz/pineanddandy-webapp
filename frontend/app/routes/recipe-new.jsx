@@ -1,6 +1,7 @@
 import { redirect } from "react-router";
 import { RecipeForm, saveRecipe } from "../components/recipe-form";
 import { formError } from "../lib/api";
+import "../styles/recipe-new.css";
 
 export async function clientAction({ request }) {
   try {
@@ -12,5 +13,5 @@ export async function clientAction({ request }) {
 }
 
 export default function NewRecipe({ actionData }) {
-  return <section className="editor"><h1>Add a recipe</h1><RecipeForm error={actionData?.error} /></section>;
+  return <section className="recipe-new-page"><h1 className="sr-only">Add a recipe</h1><RecipeForm error={actionData?.error} /></section>;
 }

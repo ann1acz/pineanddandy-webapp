@@ -6,10 +6,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "react-router";
 
-import "./app.css";
+import "./styles/app.css";
 import { ApiError } from "./lib/api";
+import { Navbar } from "./components/navbar";
+import { Header } from "./components/header";
 
 export const links = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -20,11 +23,13 @@ export const links = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap",
   },
 ];
 
 export function Layout({ children }) {
+  const { pathname } = useLocation();
+  const authPage = pathname === "/login" || pathname === "/signup";
   return (
     <html lang="en">
       <head>
@@ -34,7 +39,11 @@ export function Layout({ children }) {
         <Links />
       </head>
       <body>
-        {children}
+        <div className={authPage ? "auth-layout" : "app-layout"}>
+          {!authPage && <Header />}
+          {children}
+          {!authPage && <Navbar />}
+        </div>
         <ScrollRestoration />
         <Scripts />
       </body>

@@ -1,0 +1,85 @@
+.feed-card
+{ padding: 2rem 0 1rem;
+border-bottom: 1px solid #bcbbae;
+color: #352419; }
+
+.feed-author
+{ display: flex;
+align-items: center;
+gap: .65rem;
+margin-bottom: 1rem;
+font-size: 1.1rem;
+font-weight: 550; }
+
+.feed-author img
+{ width: 44px;
+height: 44px;
+padding: .5rem;
+border-radius: .7rem;
+background: #deddd4; }
+
+.feed-author-username
+{ display: block;
+font-size: .9rem;
+font-weight: 400;
+color: #89756c; }
+
+.feed-author img.has-photo
+{ padding: 0;
+object-fit: cover; }
+
+.feed-photo
+{ display: block;
+width: 100%;
+max-height: 360px;
+aspect-ratio: 5 / 3;
+object-fit: cover; }
+
+.feed-card-heading
+{ display: flex;
+align-items: flex-start;
+justify-content: space-between;
+gap: 1rem;
+margin-top: .75rem; }
+
+.feed-card h2
+{ margin: 0 0 .5rem;
+font-size: 1.25rem; }
+
+.feed-card h2 a
+{ color: inherit;
+text-decoration: none; }
+
+.bookmark-button
+{ padding: .2rem;
+border: 0;
+background: transparent;
+color: #b95739; }
+
+.bookmark-button:hover
+{ background: #f1e7df;
+color: #9d432b; }
+
+.bookmark-button svg
+{ width: 24px;
+height: 28px; }
+
+.feed-tags
+{ display: flex;
+flex-wrap: wrap;
+gap: .4rem;
+margin: 0;
+padding: 0;
+list-style: none; }
+
+.feed-tags li
+{ padding: .25rem .5rem;
+border-radius: .7rem;
+background: #df995e;
+color: #FEFDF7;
+font-size: .85rem; }
+
+.feed-bookmark-count
+{ margin: .6rem 0;
+font-size: .8rem;
+color: #686556; }

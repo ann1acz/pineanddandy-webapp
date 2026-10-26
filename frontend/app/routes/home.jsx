@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import "../styles/home.css";
 
 export function meta() {
   return [
@@ -9,14 +10,14 @@ export function meta() {
 
 export default function Home() {
   return (
-    <main className="page hero">
+    <main className="page home-page">
       <p className="eyebrow">Pine &amp; Dandy</p>
       <h1>Good food.<br />All in one place.</h1>
-      <p>Your own recipe collection, saved privately and ready whenever you cook.</p>
+      <p>Discover recipes from the community and keep your own favourites close at hand.</p>
       <div className="actions">
-        <Link className="button" to="/auth/signup">Create an account</Link>
-        <Link className="button secondary" to="/auth/login">Log in</Link>
-        <Link to="/recipes">My recipes</Link>
+        <Link className="button" to="/signup">Create an account</Link>
+        <Link className="button secondary" to="/login">Log in</Link>
+        <Link to="/recipes">Explore recipes</Link>
       </div>
     </main>
   );

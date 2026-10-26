@@ -21,7 +21,7 @@ export async function api(
     headers,
   });
   if (response.status === 401 && redirectOnUnauthorized) {
-    throw redirect("/auth/login");
+    throw redirect("/login");
   }
   if (!response.ok) {
     const responseBody = await response.text();
