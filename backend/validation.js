@@ -1,15 +1,13 @@
-import type { RecipeInput } from "../shared/types.ts";
-
 export class InputError extends Error {}
 
-export function objectBody(value: unknown): Record<string, unknown> {
+export function objectBody(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new InputError("A JSON object is required.");
   }
-  return value as Record<string, unknown>;
+  return value;
 }
 
-export function text(body: Record<string, unknown>, key: string, max: number, required = true) {
+export function text(body, key, max, required = true) {
   const value = body[key];
   if (typeof value !== "string" || value.trim().length > max || (required && !value.trim())) {
     throw new InputError(`${key.replaceAll("_", " ")} ${required ? "is required and" : ""} must be at most ${max} characters.`);
@@ -17,7 +15,7 @@ export function text(body: Record<string, unknown>, key: string, max: number, re
   return value.trim();
 }
 
-export function emailInput(body: Record<string, unknown>) {
+export function emailInput(body) {
   const email = text(body, "email", 254).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new InputError("Enter a valid email address.");
@@ -25,7 +23,7 @@ export function emailInput(body: Record<string, unknown>) {
   return email;
 }
 
-export function passwordInput(body: Record<string, unknown>) {
+export function passwordInput(body) {
   const password = body.password;
   if (typeof password !== "string" || password.length < 12 || password.length > 128) {
     throw new InputError("Password must be between 12 and 128 characters.");
@@ -33,7 +31,7 @@ export function passwordInput(body: Record<string, unknown>) {
   return password;
 }
 
-function integer(body: Record<string, unknown>, key: string, min: number, max: number) {
+function integer(body, key, min, max) {
   const value = body[key];
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
     throw new InputError(`${key.replaceAll("_", " ")} must be a whole number between ${min} and ${max}.`);
@@ -41,7 +39,7 @@ function integer(body: Record<string, unknown>, key: string, min: number, max: n
   return value;
 }
 
-export function recipeInput(value: unknown): RecipeInput {
+export function recipeInput(value) {
   const body = objectBody(value);
   return {
     title: text(body, "title", 160),

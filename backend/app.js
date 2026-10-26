@@ -1,30 +1,21 @@
 import { randomUUID } from "node:crypto";
 import express from "express";
-import type { ErrorRequestHandler, Request } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { rateLimit } from "express-rate-limit";
-import type { Pool } from "pg";
-import type { Profile, Recipe } from "../shared/types.ts";
-import { hashPassword, verifyPassword } from "./passwords.ts";
-import { emailInput, InputError, objectBody, passwordInput, recipeInput, text } from "./validation.ts";
-
-declare module "express-session" {
-  interface SessionData {
-    userId: string;
-  }
-}
+import { hashPassword, verifyPassword } from "./passwords.js";
+import { emailInput, InputError, objectBody, passwordInput, recipeInput, text } from "./validation.js";
 
 const PgStore = connectPgSimple(session);
 const profileColumns = "id, email, display_name, bio";
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function signIn(request: Request, userId: string) {
-  await new Promise<void>((resolve, reject) => {
+async function signIn(request, userId) {
+  await new Promise((resolve, reject) => {
     request.session.regenerate((error) => error ? reject(error) : resolve());
   });
   request.session.userId = userId;
-  await new Promise<void>((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     request.session.save((error) => error ? reject(error) : resolve());
   });
 }
@@ -34,11 +25,6 @@ export function createApp({
   sessionSecret,
   production = false,
   store,
-}: {
-  pool: Pool;
-  sessionSecret: string;
-  production?: boolean;
-  store?: session.Store;
 }) {
   if (sessionSecret.length < 32) {
     throw new Error("SESSION_SECRET must contain at least 32 characters.");
@@ -89,9 +75,9 @@ export function createApp({
     const email = emailInput(body);
     const password = passwordInput(body);
     const displayName = text(body, "display_name", 80);
-    let profile: Profile;
+    let profile;
     try {
-      const result = await pool.query<Profile>(
+      const result = await pool.query(
         `INSERT INTO users (id, email, password_hash, display_name)
          VALUES ($1, $2, $3, $4) RETURNING ${profileColumns}`,
         [randomUUID(), email, await hashPassword(password), displayName],
@@ -112,7 +98,7 @@ export function createApp({
     const body = objectBody(request.body);
     const email = emailInput(body);
     const password = passwordInput(body);
-    const result = await pool.query<Profile & { password_hash: string }>(
+    const result = await pool.query(
       `SELECT ${profileColumns}, password_hash FROM users WHERE email = $1`, [email],
     );
     const user = result.rows[0];
@@ -127,7 +113,7 @@ export function createApp({
   });
 
   app.post("/api/auth/logout", async (request, response) => {
-    await new Promise<void>((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       request.session.destroy((error) => error ? reject(error) : resolve());
     });
     response.clearCookie("pineanddandy.sid", {
@@ -141,7 +127,7 @@ export function createApp({
       response.status(401).json({ error: "Please log in to continue." });
       return;
     }
-    const result = await pool.query<Profile>(
+    const result = await pool.query(
       `SELECT ${profileColumns} FROM users WHERE id = $1`, [request.session.userId],
     );
     if (!result.rows[0]) {
@@ -157,7 +143,7 @@ export function createApp({
   });
   app.patch("/api/profile", async (request, response) => {
     const body = objectBody(request.body);
-    const result = await pool.query<Profile>(
+    const result = await pool.query(
       `UPDATE users SET display_name = $1, bio = $2 WHERE id = $3 RETURNING ${profileColumns}`,
       [text(body, "display_name", 80), text(body, "bio", 1000, false), request.session.userId],
     );
@@ -165,14 +151,14 @@ export function createApp({
   });
 
   app.get("/api/recipes", async (request, response) => {
-    const result = await pool.query<Recipe>(
+    const result = await pool.query(
       "SELECT * FROM recipes WHERE user_id = $1 ORDER BY created_at DESC, id", [request.session.userId],
     );
     response.json(result.rows);
   });
   app.post("/api/recipes", async (request, response) => {
     const recipe = recipeInput(request.body);
-    const result = await pool.query<Recipe>(
+    const result = await pool.query(
       `INSERT INTO recipes
        (id, user_id, title, description, ingredients, instructions, servings, prep_minutes, cook_minutes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
@@ -190,7 +176,7 @@ export function createApp({
     next();
   });
   app.get("/api/recipes/:recipeId", async (request, response) => {
-    const result = await pool.query<Recipe>(
+    const result = await pool.query(
       "SELECT * FROM recipes WHERE id = $1 AND user_id = $2",
       [request.params.recipeId, request.session.userId],
     );
@@ -202,7 +188,7 @@ export function createApp({
   });
   app.put("/api/recipes/:recipeId", async (request, response) => {
     const recipe = recipeInput(request.body);
-    const result = await pool.query<Recipe>(
+    const result = await pool.query(
       `UPDATE recipes SET title = $1, description = $2, ingredients = $3, instructions = $4,
        servings = $5, prep_minutes = $6, cook_minutes = $7, updated_at = CURRENT_TIMESTAMP
        WHERE id = $8 AND user_id = $9 RETURNING *`,
@@ -229,7 +215,7 @@ export function createApp({
   app.use("/api", (_request, response) => {
     response.status(404).json({ error: "API endpoint not found." });
   });
-  const handleError: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
+  const handleError = (error, _request, response, _next) => {
     if (error instanceof InputError) {
       response.status(400).json({ error: error.message });
     } else if (error instanceof SyntaxError && "status" in error && error.status === 400) {

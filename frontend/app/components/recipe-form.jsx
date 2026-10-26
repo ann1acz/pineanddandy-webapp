@@ -1,10 +1,9 @@
 import { Form, Link, useNavigation } from "react-router";
-import type { Recipe } from "../../shared/types";
 import { api } from "../lib/api";
 
-export async function saveRecipe(request: Request, recipeId?: string) {
+export async function saveRecipe(request, recipeId) {
   const form = await request.formData();
-  return api<Recipe>(recipeId ? `/recipes/${recipeId}` : "/recipes", {
+  return api(recipeId ? `/recipes/${recipeId}` : "/recipes", {
     method: recipeId ? "PUT" : "POST",
     body: JSON.stringify({
       ...Object.fromEntries(form),
@@ -15,7 +14,7 @@ export async function saveRecipe(request: Request, recipeId?: string) {
   });
 }
 
-export function RecipeForm({ recipe, error }: { recipe?: Recipe; error?: string }) {
+export function RecipeForm({ recipe, error }) {
   const busy = useNavigation().state !== "idle";
   return (
     <Form method="post" className="stack">

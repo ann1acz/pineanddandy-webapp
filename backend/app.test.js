@@ -3,13 +3,12 @@ import { readFile } from "node:fs/promises";
 import { afterEach, beforeEach, test } from "node:test";
 import session from "express-session";
 import { newDb } from "pg-mem";
-import type { Pool } from "pg";
 import request from "supertest";
-import { createApp } from "./app.ts";
-import { hashPassword, verifyPassword } from "./passwords.ts";
+import { createApp } from "./app.js";
+import { hashPassword, verifyPassword } from "./passwords.js";
 
 const secret = "test-only-session-secret-not-for-deployment";
-const header = ["X-Requested-With", "pineanddandy"] as const;
+const header = ["X-Requested-With", "pineanddandy"];
 const alice = { email: "alice@example.test", password: "correct horse battery staple", display_name: "Alice" };
 const bob = { ...alice, email: "bob@example.test", display_name: "Bob" };
 const recipe = {
@@ -21,8 +20,8 @@ const recipe = {
   prep_minutes: 5,
   cook_minutes: 12,
 };
-let pool: Pool;
-let app: ReturnType<typeof createApp>;
+let pool;
+let app;
 
 beforeEach(async () => {
   const db = newDb();
@@ -81,7 +80,7 @@ test("users can create, read, update and delete their own recipes", async () => 
   const agent = request.agent(app);
   await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
   const created = await agent.post("/api/recipes").set(...header).send(recipe).expect(201);
-  const id: string = created.body.id;
+  const id = created.body.id;
   const listed = await agent.get("/api/recipes").expect(200);
   assert.equal(listed.body.length, 1);
   const read = await agent.get(`/api/recipes/${id}`).expect(200);
@@ -99,7 +98,7 @@ test("another user cannot list, read, update or delete private recipes", async (
   await owner.post("/api/auth/register").set(...header).send(alice).expect(201);
   await other.post("/api/auth/register").set(...header).send(bob).expect(201);
   const created = await owner.post("/api/recipes").set(...header).send(recipe).expect(201);
-  const id: string = created.body.id;
+  const id = created.body.id;
   assert.deepEqual((await other.get("/api/recipes").expect(200)).body, []);
   await other.get(`/api/recipes/${id}`).expect(404);
   await other.put(`/api/recipes/${id}`).set(...header).send(recipe).expect(404);

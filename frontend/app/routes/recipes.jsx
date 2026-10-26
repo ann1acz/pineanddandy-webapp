@@ -1,13 +1,11 @@
 import { Link } from "react-router";
-import type { Route } from "./+types/recipes";
-import type { Recipe } from "../../shared/types";
 import { api } from "../lib/api";
 
 export async function clientLoader() {
-  return { recipes: await api<Recipe[]>("/recipes") };
+  return { recipes: await api("/recipes") };
 }
 
-export default function Recipes({ loaderData }: Route.ComponentProps) {
+export default function Recipes({ loaderData }) {
   return (
     <>
       <div className="section-heading">

@@ -8,11 +8,10 @@ import {
   ScrollRestoration,
 } from "react-router";
 
-import type { Route } from "./+types/root";
 import "./app.css";
 import { ApiError } from "./lib/api";
 
-export const links: Route.LinksFunction = () => [
+export const links = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",
@@ -25,7 +24,7 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children }) {
   return (
     <html lang="en">
       <head>
@@ -51,10 +50,10 @@ export function HydrateFallback() {
   return <main className="page" role="status">Loading Pine &amp; Dandy...</main>;
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+export function ErrorBoundary({ error }) {
   let message = "Oops!";
   let details = "An unexpected error occurred.";
-  let stack: string | undefined;
+  let stack;
 
   if (isRouteErrorResponse(error)) {
     message = error.status === 404 ? "404" : "Error";

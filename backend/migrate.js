@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { createPool } from "./db.ts";
+import { createPool } from "./db.js";
 
 const pool = createPool();
 const client = await pool.connect();

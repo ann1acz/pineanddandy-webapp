@@ -1,24 +1,17 @@
 import { data, redirect } from "react-router";
-import type { Profile } from "../../shared/types";
 
 export class ApiError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
+  constructor(message, status) {
     super(message);
     this.status = status;
   }
 }
 
-export function api<T>(
-  path: string,
-  options?: RequestInit,
-  redirectOnUnauthorized?: boolean,
-): Promise<T>;
 export async function api(
-  path: string,
-  options: RequestInit = {},
+  path,
+  options = {},
   redirectOnUnauthorized = true,
-): Promise<unknown> {
+) {
   const headers = new Headers(options.headers);
   headers.set("X-Requested-With", "pineanddandy");
   if (options.body) headers.set("Content-Type", "application/json");
@@ -32,7 +25,7 @@ export async function api(
   }
   if (!response.ok) {
     const responseBody = await response.text();
-    let body: unknown;
+    let body;
     try {
       body = responseBody ? JSON.parse(responseBody) : undefined;
     } catch (error) {
@@ -47,7 +40,7 @@ export async function api(
   return response.status === 204 ? undefined : await response.json();
 }
 
-export function formError(error: unknown) {
+export function formError(error) {
   if (error instanceof ApiError) {
     return data({ error: error.message }, { status: error.status });
   }
@@ -56,7 +49,7 @@ export function formError(error: unknown) {
 
 export async function currentProfile() {
   try {
-    return await api<Profile>("/profile", {}, false);
+    return await api("/profile", {}, false);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) return null;
     throw error;

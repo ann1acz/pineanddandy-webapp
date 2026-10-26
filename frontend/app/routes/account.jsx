@@ -1,13 +1,11 @@
 import { NavLink, Outlet, useNavigation } from "react-router";
-import type { Route } from "./+types/account";
-import type { Profile } from "../../shared/types";
 import { api } from "../lib/api";
 
 export async function clientLoader() {
-  return { profile: await api<Profile>("/profile") };
+  return { profile: await api("/profile") };
 }
 
-export default function Account({ loaderData }: Route.ComponentProps) {
+export default function Account({ loaderData }) {
   const busy = useNavigation().state !== "idle";
   return (
     <>

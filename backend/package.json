@@ -1,0 +1,22 @@
+{
+  "name": "pineanddandy-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../.env --watch server.js",
+    "start": "node --env-file-if-exists=../.env server.js",
+    "db:migrate": "node --env-file-if-exists=../.env migrate.js",
+    "test": "node --test app.test.js"
+  },
+  "dependencies": {
+    "connect-pg-simple": "^10.0.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "express-session": "^1.18.2",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "pg-mem": "^3.0.5",
+    "supertest": "^7.1.4"
+  }
+}

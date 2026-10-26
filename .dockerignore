@@ -1,5 +1,6 @@
 .react-router
 build
+frontend/build
 node_modules
 README.md
 .git

@@ -1,20 +1,18 @@
 import { data, Form, redirect, useNavigation } from "react-router";
-import type { Route } from "./+types/profile";
-import type { Profile } from "../../shared/types";
 import { api, ApiError } from "../lib/api";
 
 export async function clientLoader() {
-  return { profile: await api<Profile>("/profile") };
+  return { profile: await api("/profile") };
 }
 
-export async function clientAction({ request }: Route.ClientActionArgs) {
+export async function clientAction({ request }) {
   const form = await request.formData();
   try {
     if (form.get("intent") === "logout") {
-      await api<void>("/auth/logout", { method: "POST" });
+      await api("/auth/logout", { method: "POST" });
       return redirect("/auth/login");
     }
-    await api<Profile>("/profile", {
+    await api("/profile", {
       method: "PATCH",
       body: JSON.stringify(Object.fromEntries(form)),
     });
@@ -27,7 +25,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
-export default function ProfilePage({ loaderData, actionData }: Route.ComponentProps) {
+export default function ProfilePage({ loaderData, actionData }) {
   const busy = useNavigation().state !== "idle";
   const { profile } = loaderData;
   return (

@@ -1,7 +1,6 @@
-import type { Route } from "./+types/home";
 import { Link } from "react-router";
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: "Pine & Dandy | Your recipe collection" },
     { name: "description", content: "A personal home for your favourite recipes." },

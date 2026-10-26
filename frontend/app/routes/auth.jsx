@@ -1,19 +1,18 @@
 import { Form, Link, redirect, useNavigation } from "react-router";
-import type { Route } from "./+types/auth";
 import { api, currentProfile, formError } from "../lib/api";
 
-function authMode(mode: string | undefined) {
+function authMode(mode) {
   if (mode !== "login" && mode !== "signup") throw new Response("Not found", { status: 404 });
   return mode;
 }
 
-export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+export async function clientLoader({ params }) {
   const mode = authMode(params.mode);
   if (await currentProfile()) throw redirect("/recipes");
   return { mode };
 }
 
-export async function clientAction({ params, request }: Route.ClientActionArgs) {
+export async function clientAction({ params, request }) {
   const mode = authMode(params.mode);
   const form = await request.formData();
   try {
@@ -27,7 +26,7 @@ export async function clientAction({ params, request }: Route.ClientActionArgs) 
   }
 }
 
-export default function Auth({ loaderData, actionData }: Route.ComponentProps) {
+export default function Auth({ loaderData, actionData }) {
   const signup = loaderData.mode === "signup";
   const busy = useNavigation().state !== "idle";
   return (
