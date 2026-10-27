@@ -6,9 +6,11 @@
     "dev": "node --env-file-if-exists=../.env --watch server.js",
     "start": "node --env-file-if-exists=../.env server.js",
     "db:migrate": "node --env-file-if-exists=../.env migrate.js",
-    "test": "node --test app.test.js"
+    "auth:migrate": "node --env-file-if-exists=../.env migrate-auth.js",
+    "test": "node --test"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
     "connect-pg-simple": "^10.0.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",

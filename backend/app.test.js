@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { afterEach, beforeEach, test } from "node:test";
 import session from "express-session";
 import { newDb } from "pg-mem";
 import request from "supertest";
 import { createApp } from "./app.js";
-import { hashPassword, verifyPassword } from "./passwords.js";
+import { AuthenticationError } from "./supabase-auth.js";
+import { migrateAccount } from "./migrate-auth.js";
 import { InputError, recipeInput } from "./validation.js";
 
 const secret = "test-only-session-secret-not-for-deployment";
@@ -23,6 +25,9 @@ const recipe = {
 };
 let pool;
 let app;
+let auth;
+let identities;
+let tokens;
 
 beforeEach(async () => {
   const db = newDb();
@@ -35,21 +40,49 @@ beforeEach(async () => {
   db.public.none(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
   const adapter = db.adapters.createPg();
   pool = new adapter.Pool();
+  identities = new Map();
+  tokens = new Map();
+  function issue(user) {
+    const session = {
+      user,
+      access_token: randomUUID(),
+      refresh_token: randomUUID(),
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    };
+    tokens.set(session.access_token, session);
+    return session;
+  }
+  auth = {
+    async register({ email, password, username, displayName }) {
+      if (identities.has(email)) throw new AuthenticationError("Email already registered.", 409);
+      const user = {
+        id: randomUUID(), email, email_confirmed_at: new Date().toISOString(),
+        user_metadata: { username, display_name: displayName },
+      };
+      identities.set(email, { user, password });
+      return issue(user);
+    },
+    async login({ email, password }) {
+      const identity = identities.get(email);
+      if (!identity || identity.password !== password) throw new AuthenticationError("Incorrect email or password.");
+      return issue(identity.user);
+    },
+    async validate(session) {
+      if (!tokens.has(session?.access_token)) throw new AuthenticationError("Session expired.");
+      return { user: tokens.get(session.access_token).user, session };
+    },
+    async logout(session) {
+      if (session) tokens.delete(session.access_token);
+    },
+  };
   app = createApp({
     pool,
     sessionSecret: secret,
     store: new session.MemoryStore(),
+    auth,
   });
 });
 afterEach(async () => { await pool.end(); });
-
-test("passwords use salted hashes and verify without storing plaintext", async () => {
-  const first = await hashPassword(alice.password);
-  const second = await hashPassword(alice.password);
-  assert.notEqual(first, second);
-  assert.equal(await verifyPassword(alice.password, first), true);
-  assert.equal(await verifyPassword("wrong password", first), false);
-});
 
 test("sign-up persists a profile and establishes a session, login and logout work", async () => {
   const agent = request.agent(app);
@@ -60,7 +93,9 @@ test("sign-up persists a profile and establishes a session, login and logout wor
   assert.match(String(cookies), /HttpOnly/);
   assert.match(String(cookies), /SameSite=Lax/);
   const stored = await pool.query("SELECT password_hash FROM users");
-  assert.notEqual(stored.rows[0].password_hash, alice.password);
+  assert.equal(stored.rows[0].password_hash, null);
+  assert.equal(signup.body.access_token, undefined);
+  assert.equal(signup.body.refresh_token, undefined);
   await agent.get("/api/profile").expect(200);
   await agent.post("/api/auth/logout").set(...header).expect(204);
   await agent.get("/api/profile").expect(401);
@@ -89,6 +124,74 @@ test("login rejects wrong credentials and nonexistent accounts", async () => {
   await request(app).post("/api/auth/register").set(...header).send(alice).expect(201);
   await request(app).post("/api/auth/login").set(...header).send({ ...alice, password: "wrong password 1234" }).expect(401);
   await request(app).post("/api/auth/login").set(...header).send(bob).expect(401);
+});
+
+test("revoked Supabase tokens cannot access an existing cookie session", async () => {
+  const agent = request.agent(app);
+  await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
+  tokens.clear();
+  await agent.get("/api/profile").expect(401);
+  await agent.get("/api/recipes").expect(401);
+});
+
+test("an authenticated Supabase ID is never linked to a legacy profile by email alone", async () => {
+  const agent = request.agent(app);
+  await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
+  identities.get(alice.email).user = {
+    ...identities.get(alice.email).user,
+    id: randomUUID(),
+  };
+  await request(app).post("/api/auth/login").set(...header).send(alice).expect(409);
+});
+
+test("login recovers a successful Auth signup whose local profile creation failed", async () => {
+  await auth.register({ ...alice, displayName: "Alice" });
+  const agent = request.agent(app);
+  const login = await agent.post("/api/auth/login").set(...header).send(alice).expect(200);
+  assert.equal(login.body.display_name, "Alice");
+  assert.equal(login.body.username, alice.username);
+  assert.equal((await agent.get("/api/profile").expect(200)).body.id, login.body.id);
+});
+
+test("migration preserves profile IDs, recipes and bookmarks and skips unrelated Auth accounts", async () => {
+  const agent = request.agent(app);
+  const signup = await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
+  const id = signup.body.id;
+  const created = await agent.post("/api/recipes").set(...header).send(recipe).expect(201);
+  await agent.put(`/api/recipes/${created.body.id}/bookmark`).set(...header).expect(204);
+  await pool.query("UPDATE users SET auth_user_id = NULL, password_hash = $1 WHERE id = $2", ["legacy-hash", id]);
+  const profile = { id, email: alice.email };
+  const authUsers = [];
+  const authId = randomUUID();
+  let createdCount = 0;
+  const admin = {
+    async createUser(input) {
+      createdCount++;
+      assert.equal(input.email_confirm, true);
+      assert.deepEqual(input.app_metadata, { legacy_profile_id: id });
+      assert.equal(input.password, alice.password);
+      return { data: { user: { id: authId, email: alice.email, app_metadata: input.app_metadata } } };
+    },
+    async updateUserById(id, input) {
+      assert.equal(id, authId);
+      assert.equal(input.password, alice.password);
+      return { data: {} };
+    },
+  };
+  await assert.rejects(migrateAccount(pool, admin, profile, alice.password, [{
+    id: randomUUID(), email: alice.email, app_metadata: {},
+  }]), /unrelated/);
+  assert.equal(createdCount, 0);
+  await migrateAccount(pool, admin, profile, alice.password, authUsers);
+  // A retry after a remote create/local database failure reuses only our migration-marked identity.
+  await migrateAccount(pool, admin, profile, alice.password, authUsers);
+  assert.equal(createdCount, 1);
+  const stored = (await pool.query("SELECT * FROM users WHERE id = $1", [id])).rows[0];
+  assert.equal(stored.auth_user_id, authId);
+  assert.equal(stored.password_hash, "legacy-hash");
+  assert.equal(stored.display_name, alice.display_name);
+  assert.equal((await pool.query("SELECT user_id FROM recipes")).rows[0].user_id, id);
+  assert.equal((await pool.query("SELECT user_id FROM recipe_bookmarks")).rows[0].user_id, id);
 });
 
 test("private endpoints require login and mutations require the application header", async () => {

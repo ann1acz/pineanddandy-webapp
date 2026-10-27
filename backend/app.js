@@ -3,18 +3,23 @@ import express from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { rateLimit } from "express-rate-limit";
-import { hashPassword, verifyPassword } from "./passwords.js";
+import { AuthenticationError } from "./supabase-auth.js";
 import { emailInput, InputError, objectBody, passwordInput, profilePhotoInput, recipeInput, text, usernameInput } from "./validation.js";
 
 const PgStore = connectPgSimple(session);
 const profileColumns = "id, email, display_name, username, bio, profile_photo";
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function signIn(request, userId) {
+async function signIn(request, userId, tokens) {
   await new Promise((resolve, reject) => {
     request.session.regenerate((error) => error ? reject(error) : resolve());
   });
   request.session.userId = userId;
+  request.session.supabase = {
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expires_at: tokens.expires_at,
+  };
   await new Promise((resolve, reject) => {
     request.session.save((error) => error ? reject(error) : resolve());
   });
@@ -25,10 +30,12 @@ export function createApp({
   sessionSecret,
   production = false,
   store,
+  auth,
 }) {
   if (sessionSecret.length < 32) {
     throw new Error("SESSION_SECRET must contain at least 32 characters.");
   }
+  if (!auth) throw new Error("A Supabase authentication provider is required.");
   const app = express();
   // Production is expected to sit behind exactly one trusted HTTPS reverse proxy.
   if (production) app.set("trust proxy", 1);
@@ -68,20 +75,28 @@ export function createApp({
     legacyHeaders: false,
     message: { error: "Too many authentication attempts. Try again in 15 minutes." },
   });
-  const dummyHash = hashPassword(randomUUID());
-
   app.post("/api/auth/register", authLimit, async (request, response) => {
     const body = objectBody(request.body);
     const email = emailInput(body);
     const password = passwordInput(body);
     const username = usernameInput(body);
     const displayName = body.display_name === undefined ? username : text(body, "display_name", 80);
+    const existing = await pool.query("SELECT id FROM users WHERE email = $1 OR username = $2", [email, username]);
+    if (existing.rows.length) {
+      response.status(409).json({ error: "This email or username is already in use." });
+      return;
+    }
+    const tokens = await auth.register({ email, password, username, displayName });
+    const verified = await auth.validate(tokens);
+    if (verified.user.email?.toLowerCase() !== email || !verified.user.email_confirmed_at) {
+      throw new AuthenticationError("A verified email is required.", 403);
+    }
     let profile;
     try {
       const result = await pool.query(
-        `INSERT INTO users (id, email, password_hash, display_name, username)
+        `INSERT INTO users (id, email, auth_user_id, display_name, username)
          VALUES ($1, $2, $3, $4, $5) RETURNING ${profileColumns}`,
-        [randomUUID(), email, await hashPassword(password), displayName, username],
+        [randomUUID(), email, verified.user.id, displayName, username],
       );
       profile = result.rows[0];
     } catch (error) {
@@ -91,7 +106,7 @@ export function createApp({
       }
       throw error;
     }
-    await signIn(request, profile.id);
+    await signIn(request, profile.id, verified.session);
     response.status(201).json(profile);
   });
 
@@ -99,43 +114,77 @@ export function createApp({
     const body = objectBody(request.body);
     const email = emailInput(body);
     const password = passwordInput(body);
-    const result = await pool.query(
-      `SELECT ${profileColumns}, password_hash FROM users WHERE email = $1`, [email],
+    const tokens = await auth.login({ email, password });
+    const verified = await auth.validate(tokens);
+    let result = await pool.query(
+      `SELECT ${profileColumns} FROM users WHERE auth_user_id = $1`, [verified.user.id],
     );
-    const user = result.rows[0];
-    const valid = await verifyPassword(password, user?.password_hash ?? await dummyHash);
-    if (!user || !valid) {
-      response.status(401).json({ error: "Incorrect email or password." });
-      return;
+    if (!result.rows[0]) {
+      // Recover a completed Auth signup if the subsequent profile insert failed.
+      // Never attach an existing profile merely because its email matches.
+      if (!verified.user.email_confirmed_at || verified.user.email?.toLowerCase() !== email) {
+        throw new AuthenticationError("A verified email is required.", 403);
+      }
+      const existing = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+      if (existing.rows.length) {
+        throw new AuthenticationError("Your account needs migration. Ask the project owner to run auth:migrate.", 409);
+      }
+      const metadata = objectBody(verified.user.user_metadata);
+      const username = usernameInput(metadata);
+      try {
+        result = await pool.query(
+          `INSERT INTO users (id, email, auth_user_id, display_name, username)
+           VALUES ($1, $2, $3, $4, $5) RETURNING ${profileColumns}`,
+          [randomUUID(), email, verified.user.id, text(metadata, "display_name", 80), username],
+        );
+      } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "23505") {
+          throw new AuthenticationError("This email or username is already in use. Contact the project owner.", 409);
+        }
+        throw error;
+      }
     }
-    await signIn(request, user.id);
-    const { password_hash: _hash, ...profile } = user;
-    response.json(profile);
+    await signIn(request, result.rows[0].id, verified.session);
+    response.json(result.rows[0]);
   });
 
   app.post("/api/auth/logout", async (request, response) => {
+    let logoutError;
+    try {
+      await auth.logout(request.session.supabase);
+    } catch (error) {
+      logoutError = error;
+    }
     await new Promise((resolve, reject) => {
       request.session.destroy((error) => error ? reject(error) : resolve());
     });
     response.clearCookie("pineanddandy.sid", {
       httpOnly: true, sameSite: "lax", secure: production,
     });
+    if (logoutError) throw logoutError;
     response.status(204).end();
   });
 
   app.use("/api", async (request, response, next) => {
-    if (!request.session.userId) {
+    if (!request.session.userId || !request.session.supabase) {
       response.status(401).json({ error: "Please log in to continue." });
       return;
     }
+    const verified = await auth.validate(request.session.supabase);
     const result = await pool.query(
-      `SELECT ${profileColumns} FROM users WHERE id = $1`, [request.session.userId],
+      `SELECT ${profileColumns} FROM users WHERE id = $1 AND auth_user_id = $2`,
+      [request.session.userId, verified.user.id],
     );
     if (!result.rows[0]) {
       response.status(401).json({ error: "Your account is no longer available. Please log in again." });
       return;
     }
     response.locals.profile = result.rows[0];
+    request.session.supabase = {
+      access_token: verified.session.access_token,
+      refresh_token: verified.session.refresh_token,
+      expires_at: verified.session.expires_at,
+    };
     next();
   });
 
@@ -285,7 +334,9 @@ export function createApp({
     response.status(404).json({ error: "API endpoint not found." });
   });
   const handleError = (error, _request, response, _next) => {
-    if (error instanceof InputError) {
+    if (error instanceof AuthenticationError) {
+      response.status(error.status).json({ error: error.message });
+    } else if (error instanceof InputError) {
       response.status(400).json({ error: error.message });
     } else if (error instanceof SyntaxError && "status" in error && error.status === 400) {
       response.status(400).json({ error: "Invalid JSON request body." });
