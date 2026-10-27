@@ -79,12 +79,12 @@ export function ErrorBoundary({ error }) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
+    <main className="error-page">
       <h1>{message}</h1>
       <p>{details}</p>
       <p><Link to="/">Back to Pine &amp; Dandy</Link></p>
       {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
+        <pre className="error-stack">
           <code>{stack}</code>
         </pre>
       )}

@@ -4,7 +4,7 @@ import { api, currentProfile, formError } from "../lib/api";
 import "../styles/signup.css";
 
 export async function clientLoader() {
-  if (await currentProfile()) throw redirect("/recipes");
+  if (await currentProfile()) throw redirect("/");
   return null;
 }
 
@@ -22,7 +22,7 @@ export async function clientAction({ request }) {
         username: form.get("username"),
       }),
     }, false);
-    return redirect("/recipes");
+    return redirect("/");
   } catch (error) {
     return formError(error);
   }
