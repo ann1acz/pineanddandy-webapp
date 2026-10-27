@@ -69,6 +69,22 @@ test("sign-up persists a profile and establishes a session, login and logout wor
   await agent.post("/api/auth/register").set(...header).send(alice).expect(409);
 });
 
+test("sign-up defaults the display name to the username and allows editing it later", async () => {
+  const agent = request.agent(app);
+  const { display_name, ...account } = alice;
+  const signup = await agent.post("/api/auth/register").set(...header)
+    .send({ ...account, username: "ALICE_COOKS" }).expect(201);
+  assert.equal(signup.body.display_name, "alice_cooks");
+  assert.equal(signup.body.username, "alice_cooks");
+  const profile = await agent.get("/api/profile").expect(200);
+  assert.equal(profile.body.display_name, "alice_cooks");
+  await agent.patch("/api/profile").set(...header)
+    .send({ display_name: "Alice Cook", username: "alice_cooks", bio: "" }).expect(200);
+  const updated = await agent.get("/api/profile").expect(200);
+  assert.equal(updated.body.display_name, "Alice Cook");
+  assert.equal(updated.body.username, "alice_cooks");
+});
+
 test("login rejects wrong credentials and nonexistent accounts", async () => {
   await request(app).post("/api/auth/register").set(...header).send(alice).expect(201);
   await request(app).post("/api/auth/login").set(...header).send({ ...alice, password: "wrong password 1234" }).expect(401);

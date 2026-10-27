@@ -74,8 +74,8 @@ export function createApp({
     const body = objectBody(request.body);
     const email = emailInput(body);
     const password = passwordInput(body);
-    const displayName = text(body, "display_name", 80);
     const username = usernameInput(body);
+    const displayName = body.display_name === undefined ? username : text(body, "display_name", 80);
     let profile;
     try {
       const result = await pool.query(

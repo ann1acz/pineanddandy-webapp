@@ -89,7 +89,10 @@ margin: 0 0 2rem;
 list-style: none; }
 
 .recipe-detail-tags li
-{ padding: .35rem .55rem;
+{ display: inline-flex;
+align-items: center;
+gap: .35rem;
+padding: .35rem .55rem;
 border-radius: .7rem;
 background: #df995e;
 color: #FEFDF7;

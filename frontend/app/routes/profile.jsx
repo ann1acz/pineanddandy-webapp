@@ -93,11 +93,11 @@ export default function ProfilePage({ loaderData, actionData }) {
         <h2 id="my-recipes-heading">My recipes</h2>
         <p>Private recipes are visible only to you. Public recipes also appear in the feed.</p>
         <Link to="/recipes/new">Add a recipe</Link>
-        {loaderData.recipes.length ? loaderData.recipes.map((recipe) => <div key={recipe.id}><p className="muted">{recipe.visibility === "public" ? "Public" : "Private"}</p><RecipeCard recipe={recipe} /></div>) : <p>You have not added any recipes yet.</p>}
+        {loaderData.recipes.length ? loaderData.recipes.map((recipe) => <div key={recipe.id}><p className="muted">{recipe.visibility === "public" ? "Public" : "Private"}</p><RecipeCard recipe={recipe} showEdit /></div>) : <p>You have not added any recipes yet.</p>}
       </section>
       <section aria-labelledby="bookmarked-recipes-heading">
         <h2 id="bookmarked-recipes-heading">Bookmarked recipes</h2>
-        {loaderData.bookmarks.length ? loaderData.bookmarks.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />) : <p>Recipes you bookmark will appear here.</p>}
+        {loaderData.bookmarks.length ? loaderData.bookmarks.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} showEdit />) : <p>Recipes you bookmark will appear here.</p>}
       </section>
     </section>
   );

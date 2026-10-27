@@ -50,6 +50,21 @@ font-size: 1.25rem; }
 { color: inherit;
 text-decoration: none; }
 
+.feed-edit-link
+{ display: inline-flex;
+padding: .2rem;
+color: #b95739;
+text-decoration: none; }
+
+.feed-edit-link img
+{ width: 24px;
+height: 28px;
+object-fit: contain; }
+
+.feed-edit-link:hover
+{ background: #f1e7df;
+color: #9d432b; }
+
 .bookmark-button
 { padding: .2rem;
 border: 0;
@@ -73,11 +88,21 @@ padding: 0;
 list-style: none; }
 
 .feed-tags li
-{ padding: .25rem .5rem;
+{ display: inline-flex;
+align-items: center;
+gap: .35rem;
+padding: .25rem .5rem;
 border-radius: .7rem;
 background: #df995e;
 color: #FEFDF7;
 font-size: .85rem; }
+
+.feed-tags li img,
+.recipe-detail-tags li img
+{ width: 16px;
+height: 16px;
+flex-shrink: 0;
+object-fit: contain; }
 
 .feed-bookmark-count
 { margin: .6rem 0;
