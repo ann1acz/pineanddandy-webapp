@@ -1,2 +1,5 @@
 .bookmark-control
 { flex-shrink: 0; }
+
+.recipe-bookmark
+{ border-radius: 4px; } 
