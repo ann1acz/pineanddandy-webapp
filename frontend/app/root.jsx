@@ -23,7 +23,7 @@ export const links = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@400&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap",
   },
 ];
 
