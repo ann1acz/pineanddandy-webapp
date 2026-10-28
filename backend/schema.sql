@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY,
   email text NOT NULL UNIQUE,
-  password_hash text NOT NULL,
+  password_hash text,
   display_name varchar(80) NOT NULL,
   bio varchar(1000) NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username varchar(40);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_user_id uuid;
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS users_auth_user_id_idx ON users(auth_user_id);
 UPDATE users SET username = 'user_' || replace(id::text, '-', '') WHERE username IS NULL;
 ALTER TABLE users ALTER COLUMN username SET NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users(username);

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { api } from "../lib/api";
@@ -17,6 +18,22 @@ export async function clientLoader() {
   } catch {
     return { recipes: [] };
   }
+=======
+import { Link, redirect } from "react-router";
+import { currentProfile } from "../lib/api";
+import "../styles/home.css";
+
+export async function clientLoader() {
+  if (!await currentProfile()) throw redirect("/signup");
+  return null;
+}
+
+export function meta() {
+  return [
+    { title: "Pine & Dandy | Your recipe collection" },
+    { name: "description", content: "A personal home for your favourite recipes." },
+  ];
+>>>>>>> 7dcf73ff0377749ce4c758a4442244f3bd26a5ab
 }
 
 // Lets desktop users scroll a row by dragging with the mouse.
@@ -87,6 +104,7 @@ function useDragScroll(dependency) {
 
 function SectionHeading({ id, children, alignRight = false }) {
   return (
+<<<<<<< HEAD
     <div
       className={`home-section-heading${alignRight ? " home-section-heading--right" : ""}`}
     >
@@ -192,6 +210,14 @@ export default function Home({ loaderData }) {
             before you eat it.
           </p>
         </section>
+=======
+    <main className="page home-page">
+      <p className="eyebrow">Pine &amp; Dandy</p>
+      <h1>Good food.<br />All in one place.</h1>
+      <p>Discover recipes from the community and keep your own favourites close at hand.</p>
+      <div className="actions">
+        <Link className="button" to="/recipes">Explore recipes</Link>
+>>>>>>> 7dcf73ff0377749ce4c758a4442244f3bd26a5ab
       </div>
     </main>
   );

@@ -5,6 +5,10 @@ import { useState } from "react";
 import { recipeLines } from "../lib/recipe-lines";
 import backIcon from "../images/back_icon.png";
 import userIcon from "../images/mynaui_user.png";
+import cookIcon from "../images/cook_icon.png";
+import plantIcon from "../images/plant_icon.png";
+import dishIcon from "../images/dish_icon.png";
+import seasonIcon from "../images/season_icon.png";
 import "../styles/recipe-card.css";
 import "../styles/recipe.css";
 
@@ -58,8 +62,13 @@ export default function RecipePage({ loaderData, actionData }) {
       </div>
       <div className="recipe-author"><img className={recipe.author_photo ? "has-photo" : undefined} src={recipe.author_photo || userIcon} alt="" /><div><p>{recipe.author_name}</p><span>@{recipe.author_username}</span>{recipe.visibility !== "public" && <span className="recipe-private-note">Private recipe · Only you</span>}</div></div>
       <ul className="recipe-detail-tags" aria-label="Recipe information">
-        <li>{recipe.cook_minutes} mins</li>
-        {[...(recipe.plant_types ?? []), ...(recipe.dish_types ?? []), ...(recipe.seasons ?? []), ...(recipe.dietary_restrictions ?? [])].map((tag, index) => <li key={`${tag}:${index}`}>{tag}</li>)}
+        <li><img src={cookIcon} alt="" />{recipe.cook_minutes} mins</li>
+        {[
+          { tags: recipe.plant_types, icon: plantIcon, type: "plant" },
+          { tags: recipe.dish_types, icon: dishIcon, type: "dish" },
+          { tags: recipe.seasons, icon: seasonIcon, type: "season" },
+        ].flatMap(({ tags, icon, type }) => (tags ?? []).map((tag, index) => <li key={`${type}:${index}`}><img src={icon} alt="" />{tag}</li>))}
+        {(recipe.dietary_restrictions ?? []).map((tag, index) => <li key={`diet:${index}`}>{tag}</li>)}
       </ul>
       <h1>{recipe.title}</h1>
       {recipe.photos?.length > 0 && <div className="recipe-gallery">{recipe.photos.map((photo, index) => <img key={index} src={photo} alt={`${recipe.title}, photo ${index + 1}`} />)}</div>}

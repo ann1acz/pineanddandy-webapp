@@ -11,12 +11,10 @@
     "isbot": "^5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router": "^8.5.0",
-    "tailwindcss": "^4.2.2"
+    "react-router": "^8.5.0"
   },
   "devDependencies": {
     "@react-router/dev": "^8.5.0",
-    "@tailwindcss/vite": "^4.2.2",
     "vite": "^8.0.3"
   }
 }
