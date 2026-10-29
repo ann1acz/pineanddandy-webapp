@@ -59,7 +59,6 @@ export function recipeInput(value) {
     description: text(body, "description", 2000, false),
     ingredients: text(body, "ingredients", 20000),
     instructions: text(body, "instructions", 30000),
-    servings: integer(body, "servings", 1, 100),
     prep_minutes: integer(body, "prep_minutes", 0, 10080),
     cook_minutes: integer(body, "cook_minutes", 0, 10080),
     photos: photosInput(body.photos),

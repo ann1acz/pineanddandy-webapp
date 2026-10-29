@@ -13,14 +13,17 @@ import "../styles/recipe-card.css";
 import "../styles/recipe.css";
 
 export async function clientLoader({ params }) {
+  // The ID in the URL tells us which recipe to load.
   return { recipe: await api(`/recipes/${params.recipeId}`) };
 }
 
 export async function clientAction({ params }) {
   try {
+    // Go back to the recipe list after deleting this recipe.
     await api(`/recipes/${params.recipeId}`, { method: "DELETE" });
     return redirect("/recipes");
   } catch (error) {
+    // Return delete errors so the recipe page can show them.
     return formError(error);
   }
 }
@@ -30,15 +33,19 @@ export default function RecipePage({ loaderData, actionData }) {
   const busy = useNavigation().state !== "idle";
   const [shareMessage, setShareMessage] = useState("");
   async function shareRecipe() {
+    // Clear the last message before trying to share again.
     setShareMessage("");
     try {
+      // Use the device sharing menu when it is available.
       if (navigator.share) {
         await navigator.share({ title: recipe.title, url: window.location.href });
       } else {
+        // Otherwise, copy the recipe link so it can be shared.
         await navigator.clipboard.writeText(window.location.href);
         setShareMessage("Recipe link copied.");
       }
     } catch (error) {
+      // Closing the device sharing menu is not an error we need to show.
       if (error instanceof DOMException && error.name === "AbortError") return;
       setShareMessage("Could not share the link. Copy the address from your browser instead.");
     }
@@ -48,11 +55,13 @@ export default function RecipePage({ loaderData, actionData }) {
       <div className="recipe-topbar">
         <Link to="/recipes" aria-label="Back to recipes"><img src={backIcon} alt="" /></Link>
         <p>{recipe.title}</p>
+        {/* Only the author sees the edit and delete options. */}
         {recipe.is_owner ? <details className="recipe-owner-menu">
           <summary aria-label="Recipe options">···</summary>
           <div>
             <Link to={`/recipes/${recipe.id}/edit`}>Edit recipe</Link>
             <Form method="post" onSubmit={(event) => {
+              // Cancel the delete request if the user does not confirm it.
               if (!window.confirm("Permanently delete this recipe?")) event.preventDefault();
             }}>
               <button className="danger" disabled={busy}>{busy ? "Deleting..." : "Delete recipe"}</button>
@@ -63,6 +72,7 @@ export default function RecipePage({ loaderData, actionData }) {
       <div className="recipe-author"><img className={recipe.author_photo ? "has-photo" : undefined} src={recipe.author_photo || userIcon} alt="" /><div><p>{recipe.author_name}</p><span>@{recipe.author_username}</span>{recipe.visibility !== "public" && <span className="recipe-private-note">Private recipe · Only you</span>}</div></div>
       <ul className="recipe-detail-tags" aria-label="Recipe information">
         <li><img src={cookIcon} alt="" />{recipe.cook_minutes} mins</li>
+        {/* Combine the different tag groups into one list, keeping their own icons. */}
         {[
           { tags: recipe.plant_types, icon: plantIcon, type: "plant" },
           { tags: recipe.dish_types, icon: dishIcon, type: "dish" },
@@ -74,15 +84,18 @@ export default function RecipePage({ loaderData, actionData }) {
       {recipe.photos?.length > 0 && <div className="recipe-gallery">{recipe.photos.map((photo, index) => <img key={index} src={photo} alt={`${recipe.title}, photo ${index + 1}`} />)}</div>}
       {recipe.description && <p className="preserve-lines">{recipe.description}</p>}
       {actionData?.error && <p className="error" role="alert">{actionData.error}</p>}
+      {/* Split the saved text into separate ingredients and numbered steps. */}
       <section className="recipe-detail-section"><h2>Ingredients</h2><ul className="recipe-ingredients">{recipeLines(recipe.ingredients).map((line, index) => <li key={index}>{line}</li>)}</ul></section>
       <section className="recipe-detail-section"><h2>Instructions</h2><ol className="recipe-instructions">{recipeLines(recipe.instructions).map((line, index) => <li key={index}>{line}</li>)}</ol></section>
       <div className="recipe-footer-actions">
         <BookmarkButton recipe={recipe} />
+        {/* Private recipes do not get a share button. */}
         {recipe.visibility === "public" && <button className="recipe-share" type="button" onClick={shareRecipe} aria-label="Share recipe">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="18" cy="4" r="3" /><circle cx="5" cy="12" r="3" /><circle cx="18" cy="20" r="3" /><path d="m8 10 7-4M8 14l7 4" /></svg>
         </button>}
       </div>
       {shareMessage && <p role="status">{shareMessage}</p>}
+      {/* Use UTC so the saved time is shown consistently across time zones. */}
       <time className="recipe-timestamp" dateTime={recipe.created_at}>{new Intl.DateTimeFormat("en-GB", { dateStyle: "short", timeStyle: "short", timeZone: "UTC" }).format(new Date(recipe.created_at))} UTC</time>
     </article>
   );

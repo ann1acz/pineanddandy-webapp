@@ -6,6 +6,7 @@ import userIcon from "../images/mynaui_user.png";
 import "../styles/profile.css";
 
 export async function clientLoader() {
+  // Load the profile, its recipes and bookmarks at the same time.
   const [profile, recipes, bookmarks] = await Promise.all([api("/profile"), api("/recipes"), api("/bookmarks")]);
   return { profile, recipes, bookmarks };
 }
@@ -13,16 +14,19 @@ export async function clientLoader() {
 export async function clientAction({ request }) {
   const form = await request.formData();
   try {
+    // The logout button uses this same action, but skips saving the profile.
     if (form.get("intent") === "logout") {
       await api("/auth/logout", { method: "POST" });
       return redirect("/login");
     }
+    // Save the profile details from the form.
     await api("/profile", {
       method: "PATCH",
       body: JSON.stringify(Object.fromEntries(form)),
     });
     return { error: null, saved: true };
   } catch (error) {
+    // Show server errors in the form, but let unexpected errors reach the error page.
     if (error instanceof ApiError) {
       return data({ error: error.message, saved: false }, { status: error.status });
     }
@@ -33,21 +37,25 @@ export async function clientAction({ request }) {
 export default function ProfilePage({ loaderData, actionData }) {
   const busy = useNavigation().state !== "idle";
   const { profile } = loaderData;
+  // Keep the chosen photo here for a preview before the profile is saved.
   const [photo, setPhoto] = useState(profile.profile_photo ?? "");
   const [photoError, setPhotoError] = useState("");
   const [reading, setReading] = useState(false);
 
   async function choosePhoto(event) {
     const file = event.target.files[0];
+    // Reset the input so the same file can be picked again.
     event.target.value = "";
     if (!file) return;
     setPhotoError("");
+    // Only allow small image files that the profile page can display.
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 1_048_576) {
       setPhotoError("Choose a JPEG, PNG or WebP photo of at most 1 MB.");
       return;
     }
     setReading(true);
     try {
+      // Turn the chosen image into a value that can be saved with the profile.
       const image = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
@@ -60,6 +68,7 @@ export default function ProfilePage({ loaderData, actionData }) {
       if (!(error instanceof Error)) throw error;
       setPhotoError(error.message);
     } finally {
+      // Re-enable the form whether the photo loaded or failed.
       setReading(false);
     }
   }
@@ -73,6 +82,7 @@ export default function ProfilePage({ loaderData, actionData }) {
       </div>
       <p className="muted">{profile.email}</p>
       <Form method="post" className="stack">
+        {/* Send the photo with the rest of the profile when Save is clicked. */}
         <input type="hidden" name="profile_photo" value={photo} />
         <label>Profile photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={choosePhoto} disabled={busy || reading} aria-describedby="profile-photo-help" /></label>
         <p id="profile-photo-help" className="muted">JPEG, PNG or WebP, up to 1 MB. Choose a photo, then Save profile. Your saved photo appears with your public recipes.</p>

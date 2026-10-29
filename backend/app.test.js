@@ -19,7 +19,6 @@ const recipe = {
   description: "A quick dinner",
   ingredients: "200g pasta\n1 lemon",
   instructions: "Boil pasta.\nAdd lemon.",
-  servings: 2,
   prep_minutes: 5,
   cook_minutes: 12,
 };
@@ -252,8 +251,6 @@ test("input validation rejects malformed profiles, recipes and IDs", async () =>
   for (const invalid of [
     { ...recipe, title: " " },
     { ...recipe, ingredients: "" },
-    { ...recipe, servings: 0 },
-    { ...recipe, servings: 1.5 },
     { ...recipe, prep_minutes: -1 },
     { ...recipe, cook_minutes: 10081 },
     { ...recipe, title: "x".repeat(161) },
@@ -381,7 +378,9 @@ test("photo size validation accepts exactly 1 MB and rejects one byte more", () 
 test("recipe schema migration can run again without removing saved recipes", async () => {
   const agent = request.agent(app);
   await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
-  await agent.post("/api/recipes").set(...header).send({ ...recipe, photos: [photo] }).expect(201);
+  const created = await agent.post("/api/recipes").set(...header).send({ ...recipe, photos: [photo] }).expect(201);
+  assert.equal(created.body.servings, undefined);
+  await pool.query("ALTER TABLE recipes ADD COLUMN servings integer NOT NULL DEFAULT 2");
   const schema = await readFile(new URL("./schema.sql", import.meta.url), "utf8");
   for (const statement of schema.split(";").filter((statement) => statement.trim().startsWith("ALTER TABLE"))) {
     await pool.query(statement);
@@ -389,6 +388,7 @@ test("recipe schema migration can run again without removing saved recipes", asy
   const listed = await agent.get("/api/recipes").expect(200);
   assert.equal(listed.body.length, 1);
   assert.deepEqual(listed.body[0].photos, [photo]);
+  assert.equal(listed.body[0].servings, undefined);
 });
 
 test("public feed shares only published recipes while mutations stay owner-only", async () => {

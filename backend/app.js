@@ -10,6 +10,7 @@ const PgStore = connectPgSimple(session);
 const profileColumns = "id, email, display_name, username, bio, profile_photo";
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Start a fresh session after login and save the user's details in it.
 async function signIn(request, userId, tokens) {
   await new Promise((resolve, reject) => {
     request.session.regenerate((error) => error ? reject(error) : resolve());
@@ -32,14 +33,16 @@ export function createApp({
   store,
   auth,
 }) {
+  // Check that the app has the settings it needs before starting.
   if (sessionSecret.length < 32) {
     throw new Error("SESSION_SECRET must contain at least 32 characters.");
   }
   if (!auth) throw new Error("A Supabase authentication provider is required.");
   const app = express();
-  // Production is expected to sit behind exactly one trusted HTTPS reverse proxy.
+  // Trust the HTTPS proxy when the app is running in production.
   if (production) app.set("trust proxy", 1);
   app.disable("x-powered-by");
+  // Add basic safety headers and prevent other sites from sending API requests.
   app.use("/api", (_request, response, next) => {
     response.set("Cache-Control", "no-store");
     response.set("X-Content-Type-Options", "nosniff");
@@ -55,6 +58,7 @@ export function createApp({
     next();
   });
   app.use("/api", express.json({ limit: "5mb" }));
+  // Store login sessions in the database and keep the session cookie secure.
   app.use("/api", session({
     name: "pineanddandy.sid",
     secret: sessionSecret,
@@ -68,6 +72,7 @@ export function createApp({
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }));
+  // Limit repeated attempts to register or log in.
   const authLimit = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 30,
@@ -75,6 +80,7 @@ export function createApp({
     legacyHeaders: false,
     message: { error: "Too many authentication attempts. Try again in 15 minutes." },
   });
+  // Create a user account after checking the submitted details and email.
   app.post("/api/auth/register", authLimit, async (request, response) => {
     const body = objectBody(request.body);
     const email = emailInput(body);
@@ -110,6 +116,7 @@ export function createApp({
     response.status(201).json(profile);
   });
 
+  // Sign in and load the user's profile from the database.
   app.post("/api/auth/login", authLimit, async (request, response) => {
     const body = objectBody(request.body);
     const email = emailInput(body);
@@ -148,6 +155,7 @@ export function createApp({
     response.json(result.rows[0]);
   });
 
+  // Sign out of the auth service and remove the saved session.
   app.post("/api/auth/logout", async (request, response) => {
     let logoutError;
     try {
@@ -165,6 +173,7 @@ export function createApp({
     response.status(204).end();
   });
 
+  // Check the saved login before allowing access to the rest of the API.
   app.use("/api", async (request, response, next) => {
     if (!request.session.userId || !request.session.supabase) {
       response.status(401).json({ error: "Please log in to continue." });
@@ -188,9 +197,11 @@ export function createApp({
     next();
   });
 
+  // Return the signed-in user's profile.
   app.get("/api/profile", (_request, response) => {
     response.json(response.locals.profile);
   });
+  // Save profile changes and report if the username is already taken.
   app.patch("/api/profile", async (request, response) => {
     const body = objectBody(request.body);
     const username = body.username === undefined ? response.locals.profile.username : usernameInput(body);
@@ -210,10 +221,12 @@ export function createApp({
     }
   });
 
+  // Return only recipes owned by the signed-in user.
   app.get("/api/recipes", async (request, response) => {
     const recipes = await sharedRecipes(request.session.userId);
     response.json(recipes.filter((recipe) => recipe.is_owner));
   });
+  // Load recipes the user is allowed to see, with their bookmark details.
   async function sharedRecipes(userId, recipeId, bookmarkedOnly = false) {
     const result = await pool.query(
       `SELECT recipes.*, users.display_name AS author_name, users.username AS author_username,
@@ -242,28 +255,33 @@ export function createApp({
       is_owner: recipe.user_id === userId,
     }));
   }
+  // Show public recipes in the community feed.
   app.get("/api/feed", async (request, response) => {
     const recipes = await sharedRecipes(request.session.userId);
     response.json(recipes.filter((recipe) => recipe.visibility === "public"));
   });
+  // Show the recipes the user has bookmarked.
   app.get("/api/bookmarks", async (request, response) => {
     response.json(await sharedRecipes(request.session.userId, undefined, true));
   });
+  // Save a new recipe and return it to the frontend.
   app.post("/api/recipes", async (request, response) => {
     const recipe = recipeInput(request.body);
+    // $1, $2, etc. match the values in the list below. RETURNING * gives back the saved recipe.
     const result = await pool.query(
       `INSERT INTO recipes
-       (id, user_id, title, description, ingredients, instructions, servings, prep_minutes, cook_minutes,
+       (id, user_id, title, description, ingredients, instructions, prep_minutes, cook_minutes,
         photos, plant_types, dish_types, seasons, dietary_restrictions, visibility)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
       [randomUUID(), request.session.userId, recipe.title, recipe.description,
-        recipe.ingredients, recipe.instructions, recipe.servings, recipe.prep_minutes, recipe.cook_minutes,
+        recipe.ingredients, recipe.instructions, recipe.prep_minutes, recipe.cook_minutes,
         JSON.stringify(recipe.photos), JSON.stringify(recipe.plant_types), JSON.stringify(recipe.dish_types),
         JSON.stringify(recipe.seasons), JSON.stringify(recipe.dietary_restrictions), recipe.visibility],
     );
     response.status(201).json(result.rows[0]);
   });
 
+  // Check recipe IDs before using them in database queries.
   app.use("/api/recipes/:recipeId", (request, response, next) => {
     if (!uuidPattern.test(request.params.recipeId)) {
       response.status(400).json({ error: "Invalid recipe ID." });
@@ -271,6 +289,7 @@ export function createApp({
     }
     next();
   });
+  // Return one recipe if the user is allowed to see it.
   app.get("/api/recipes/:recipeId", async (request, response) => {
     const recipes = await sharedRecipes(request.session.userId, request.params.recipeId);
     if (!recipes[0]) {
@@ -279,6 +298,7 @@ export function createApp({
     }
     response.json(recipes[0]);
   });
+  // Add a bookmark if the recipe is public or belongs to the user.
   app.put("/api/recipes/:recipeId/bookmark", async (request, response) => {
     const result = await pool.query(
       `INSERT INTO recipe_bookmarks (user_id, recipe_id)
@@ -295,23 +315,27 @@ export function createApp({
     }
     response.status(204).end();
   });
+  // Remove the user's bookmark from a recipe.
   app.delete("/api/recipes/:recipeId/bookmark", async (request, response) => {
     await pool.query("DELETE FROM recipe_bookmarks WHERE user_id = $1 AND recipe_id = $2",
       [request.session.userId, request.params.recipeId]);
     response.status(204).end();
   });
+  // Update a recipe only when it belongs to the signed-in user.
   app.put("/api/recipes/:recipeId", async (request, response) => {
     const recipe = recipeInput(request.body);
     const result = await pool.query(
       `UPDATE recipes SET title = $1, description = $2, ingredients = $3, instructions = $4,
-       servings = $5, prep_minutes = $6, cook_minutes = $7,
-       photos = $10, plant_types = $11, dish_types = $12, seasons = $13, dietary_restrictions = $14, visibility = $15,
+       prep_minutes = $5, cook_minutes = $6,
+       photos = $7, plant_types = $8, dish_types = $9, seasons = $10, dietary_restrictions = $11, visibility = $12,
        updated_at = CURRENT_TIMESTAMP
-       WHERE id = $8 AND user_id = $9 RETURNING *`,
+       WHERE id = $13 AND user_id = $14 RETURNING *`,
       [recipe.title, recipe.description, recipe.ingredients, recipe.instructions,
-        recipe.servings, recipe.prep_minutes, recipe.cook_minutes, request.params.recipeId, request.session.userId,
-        JSON.stringify(recipe.photos), JSON.stringify(recipe.plant_types), JSON.stringify(recipe.dish_types),
-        JSON.stringify(recipe.seasons), JSON.stringify(recipe.dietary_restrictions), recipe.visibility],
+        recipe.prep_minutes, recipe.cook_minutes, JSON.stringify(recipe.photos),
+        JSON.stringify(recipe.plant_types), JSON.stringify(recipe.dish_types),
+        JSON.stringify(recipe.seasons), JSON.stringify(recipe.dietary_restrictions), recipe.visibility,
+        request.params.recipeId, request.session.userId,
+      ],
     );
     if (!result.rows[0]) {
       response.status(404).json({ error: "Recipe not found." });
@@ -319,6 +343,7 @@ export function createApp({
     }
     response.json(result.rows[0]);
   });
+  // Delete a recipe only when it belongs to the signed-in user.
   app.delete("/api/recipes/:recipeId", async (request, response) => {
     const result = await pool.query(
       "DELETE FROM recipes WHERE id = $1 AND user_id = $2 RETURNING id",
@@ -330,9 +355,11 @@ export function createApp({
     }
     response.status(204).end();
   });
+  // Return a clear error for API paths that do not exist.
   app.use("/api", (_request, response) => {
     response.status(404).json({ error: "API endpoint not found." });
   });
+  // Turn known errors into useful responses and log unexpected ones.
   const handleError = (error, _request, response, _next) => {
     if (error instanceof AuthenticationError) {
       response.status(error.status).json({ error: error.message });

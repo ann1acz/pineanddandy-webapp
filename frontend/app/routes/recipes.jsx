@@ -19,15 +19,19 @@ const categories = [
 ];
 
 export async function clientLoader() {
+  // Get the public recipes for the feed.
   return { recipes: await api("/feed") };
 }
 
 export default function Recipes({ loaderData }) {
+  // Read the filters from the URL so they stay selected when the page is reopened.
   const [params] = useSearchParams();
+  // Keep a reference to the filter dialog so the buttons can open and close it.
   const dialog = useRef(null);
   const results = filterRecipes(loaderData.recipes, params);
   const active = filterGroups.some(({ name }) => params.has(name));
   function categoryUrl(value) {
+    // Keep the other filters when changing the recipe category.
     const next = new URLSearchParams(params);
     next.delete("plant");
     if (value) next.set("plant", value);
@@ -39,6 +43,7 @@ export default function Recipes({ loaderData }) {
       <div className="feed-category-heading"><h2>Categories</h2><button aria-label="Filter recipes" onClick={() => dialog.current.showModal()}><img src={filterIcon} alt="" /></button></div>
       <nav className="feed-categories" aria-label="Recipe categories">
         {categories.map(([value, label, icon]) => {
+          // All is selected when there is no plant filter in the URL.
           const selected = value ? params.getAll("plant").includes(value) : !params.has("plant");
           return <Link key={label} to={categoryUrl(value)} aria-current={selected ? "true" : undefined}><span className="feed-category-icon"><img src={icon} alt="" /></span><span>{label}</span></Link>;
         })}
@@ -48,10 +53,12 @@ export default function Recipes({ loaderData }) {
         <section className="feed-empty"><h2>{active ? "No matching recipes yet" : "The recipe feed starts here"}</h2><p>{active ? "Try different filters or clear your selection." : "Public recipes from the community will appear here. Add a recipe and choose Public to share it."}</p></section>}
       <dialog className="recipe-filter-dialog" ref={dialog} aria-labelledby="filter-title">
         <div className="filter-dialog-heading"><h2 id="filter-title">Filter</h2><button type="button" aria-label="Close filters" onClick={() => dialog.current.close()}>×</button></div>
+        {/* GET puts the chosen filters in the URL. The key resets the fields when it changes. */}
         <Form method="get" action="/recipes" key={params.toString()} onSubmit={() => dialog.current.close()}>
           {filterGroups.map(({ name, label, options, single }) => (
             <fieldset key={name}><legend>{label}</legend><div className="filter-options">
               {options.map(([value, text]) => <label className="filter-chip" key={value}>
+                {/* Radio buttons allow one choice; checkboxes allow several. */}
                 <input type={single ? "radio" : "checkbox"} name={name} value={value} defaultChecked={single ? (params.get(name) ?? "newest") === value : params.getAll(name).includes(value)} />
                 <span>{text}</span>
               </label>)}
