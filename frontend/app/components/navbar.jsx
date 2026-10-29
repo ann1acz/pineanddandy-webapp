@@ -22,10 +22,10 @@ export function Navbar() {
           <span className="nav-icon"><img src={journalIcon} alt="" /></span>
           <span>Journal</span>
         </span>
-        <span className="main-nav-item nav-item-disabled" aria-label="Guides, coming soon" title="Coming soon">
+        <NavLink className="main-nav-link" to="/fourohfour" title="Coming soon">
           <span className="nav-icon"><img src={guidesIcon} alt="" /></span>
           <span>Guides</span>
-        </span>
+        </NavLink>
         <NavLink className="main-nav-link" to="/profile">
           <span className="nav-icon"><img src={profileIcon} alt="" /></span>
           <span>Profile</span>
