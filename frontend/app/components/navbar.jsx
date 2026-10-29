@@ -18,10 +18,10 @@ export function Navbar() {
           <span className="nav-icon"><img src={cookieIcon} alt="" /></span>
           <span>Recipes</span>
         </NavLink>
-        <span className="main-nav-item nav-item-disabled" aria-label="Journal, coming soon" title="Coming soon">
+        <NavLink className="main-nav-link" to="/journal">
           <span className="nav-icon"><img src={journalIcon} alt="" /></span>
           <span>Journal</span>
-        </span>
+        </NavLink>
         <NavLink className="main-nav-link" to="/fourohfour" title="Coming soon">
           <span className="nav-icon"><img src={guidesIcon} alt="" /></span>
           <span>Guides</span>

@@ -7,6 +7,7 @@ export default [
   layout("routes/account.jsx", [
     route("search", "routes/search.jsx"),
     route("profile", "routes/profile.jsx"),
+    route("journal", "routes/journal.jsx"),
     route("recipes", "routes/recipes.jsx"),
     route("recipes/new", "routes/recipe-new.jsx"),
     route("recipes/:recipeId", "routes/recipe.jsx"),

@@ -26,6 +26,16 @@ if (Number(pendingMigration.rows[0].count) > 0) {
 }
 await pool.query("SELECT id FROM recipes LIMIT 0");
 await pool.query("SELECT sid FROM user_sessions LIMIT 0");
+try {
+  await pool.query("SELECT id FROM journal_entries LIMIT 0");
+  await pool.query("SELECT id FROM saved_guides LIMIT 0");
+} catch (error) {
+  await pool.end();
+  throw new Error(
+    "The journal database tables are missing. Stop the app, run npm run db:migrate from the repository root, and restart the API.",
+    { cause: error },
+  );
+}
 
 if (production) {
   const clientDirectory = fileURLToPath(new URL("../frontend/build/client", import.meta.url));

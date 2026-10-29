@@ -48,6 +48,31 @@ CREATE TABLE IF NOT EXISTS recipe_bookmarks (
 );
 CREATE INDEX IF NOT EXISTS recipe_bookmarks_recipe_idx ON recipe_bookmarks(recipe_id);
 
+CREATE TABLE IF NOT EXISTS journal_entries (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  entry_date date NOT NULL,
+  title varchar(160) NOT NULL,
+  location varchar(160) NOT NULL DEFAULT '',
+  notes text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS journal_entries_user_date_idx
+  ON journal_entries(user_id, entry_date DESC, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS saved_guides (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title varchar(160) NOT NULL,
+  url text NOT NULL,
+  url_hash varchar(64) NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (user_id, url_hash)
+);
+CREATE INDEX IF NOT EXISTS saved_guides_user_created_idx
+  ON saved_guides(user_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS user_sessions (
   sid varchar PRIMARY KEY,
   sess json NOT NULL,

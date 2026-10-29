@@ -69,6 +69,46 @@ export function recipeInput(value) {
   };
 }
 
+export function journalEntryInput(value) {
+  const body = objectBody(value);
+  const entryDate = text(body, "entry_date", 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) {
+    throw new InputError("Entry date must be a valid calendar date.");
+  }
+  const [year, month, day] = entryDate.split("-").map(Number);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (year === 0 || month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1]) {
+    throw new InputError("Entry date must be a valid calendar date.");
+  }
+  return {
+    entry_date: entryDate,
+    title: text(body, "title", 160),
+    location: text(body, "location", 160, false),
+    notes: text(body, "notes", 20000, false),
+  };
+}
+
+export function savedGuideInput(value) {
+  const body = objectBody(value);
+  const url = text(body, "url", 2048);
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    throw new InputError("Guide URL must be a valid web address.");
+  }
+  if (!["http:", "https:"].includes(parsedUrl.protocol) || !parsedUrl.hostname ||
+      parsedUrl.username || parsedUrl.password) {
+    throw new InputError("Guide URL must be a valid HTTP or HTTPS address.");
+  }
+  return {
+    title: text(body, "title", 160),
+    url: parsedUrl.toString(),
+  };
+}
+
 function categories(body, key) {
   const values = body[key] ?? [];
   if (!Array.isArray(values) || values.length > 12 ||

@@ -67,8 +67,11 @@ After migration run `npm run dev` from the repository root and log in using the
 existing account emails and the new passwords. Do not restart the old
 authentication implementation against migrated data without a rollback plan.
 
-For a fresh, empty project, run `npm run db:migrate` before starting the API.
-Both migration commands revoke browser-role access to the application tables.
+Run `npm run db:migrate` from the repository root before starting the API on a
+fresh project, and whenever an application update adds or changes database
+tables. This migration is safe to rerun and preserves existing account and
+recipe data. Both migration commands revoke browser-role access to the
+application tables.
 
 ## Checks
 

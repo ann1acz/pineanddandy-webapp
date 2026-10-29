@@ -119,6 +119,71 @@ test("sign-up defaults the display name to the username and allows editing it la
   assert.equal(updated.body.username, "alice_cooks");
 });
 
+test("journal entries can be created, listed and edited only by their owner", async () => {
+  const owner = request.agent(app);
+  const otherUser = request.agent(app);
+  await owner.post("/api/auth/register").set(...header).send(alice).expect(201);
+  await otherUser.post("/api/auth/register").set(...header).send(bob).expect(201);
+
+  const created = await owner.post("/api/journal-entries").set(...header).send({
+    entry_date: "2026-10-29",
+    title: "Found chanterelles",
+    location: "Pine woods",
+    notes: "Growing near the old footpath.",
+  }).expect(201);
+  assert.equal(created.body.title, "Found chanterelles");
+  assert.equal(String(created.body.entry_date).slice(0, 10), "2026-10-29");
+
+  const entries = await owner.get("/api/journal-entries").expect(200);
+  assert.equal(entries.body.length, 1);
+  assert.equal(entries.body[0].id, created.body.id);
+  assert.deepEqual((await otherUser.get("/api/journal-entries").expect(200)).body, []);
+
+  const updated = await owner.put(`/api/journal-entries/${created.body.id}`).set(...header).send({
+    entry_date: "2026-10-28",
+    title: "A better patch",
+    location: "",
+    notes: "Look again next week.",
+  }).expect(200);
+  assert.equal(updated.body.title, "A better patch");
+  assert.equal(String(updated.body.entry_date).slice(0, 10), "2026-10-28");
+  await otherUser.put(`/api/journal-entries/${created.body.id}`).set(...header).send({
+    entry_date: "2026-10-28", title: "Not yours", location: "", notes: "",
+  }).expect(404);
+  await owner.post("/api/journal-entries").set(...header).send({
+    entry_date: "2026-02-30", title: "Invalid date", location: "", notes: "",
+  }).expect(400);
+  await owner.put("/api/journal-entries/not-a-uuid").set(...header).send({
+    entry_date: "2026-10-29", title: "Invalid ID", location: "", notes: "",
+  }).expect(400);
+});
+
+test("saved guides are validated, searchable data is private per user, and links can be removed", async () => {
+  const owner = request.agent(app);
+  const otherUser = request.agent(app);
+  await owner.post("/api/auth/register").set(...header).send(alice).expect(201);
+  await otherUser.post("/api/auth/register").set(...header).send(bob).expect(201);
+
+  const guide = await owner.post("/api/saved-guides").set(...header).send({
+    title: "Woodland fungi field guide",
+    url: "https://example.test/guides/fungi",
+  }).expect(201);
+  assert.equal(guide.body.title, "Woodland fungi field guide");
+  assert.equal((await owner.get("/api/saved-guides").expect(200)).body.length, 1);
+  assert.deepEqual((await otherUser.get("/api/saved-guides").expect(200)).body, []);
+  await owner.post("/api/saved-guides").set(...header).send({
+    title: "Duplicate guide",
+    url: "https://example.test/guides/fungi",
+  }).expect(409);
+  await owner.post("/api/saved-guides").set(...header).send({
+    title: "Unsafe scheme",
+    url: "javascript:alert(1)",
+  }).expect(400);
+  await otherUser.delete(`/api/saved-guides/${guide.body.id}`).set(...header).expect(404);
+  await owner.delete(`/api/saved-guides/${guide.body.id}`).set(...header).expect(204);
+  assert.deepEqual((await owner.get("/api/saved-guides").expect(200)).body, []);
+});
+
 test("login rejects wrong credentials and nonexistent accounts", async () => {
   await request(app).post("/api/auth/register").set(...header).send(alice).expect(201);
   await request(app).post("/api/auth/login").set(...header).send({ ...alice, password: "wrong password 1234" }).expect(401);

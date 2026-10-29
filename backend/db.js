@@ -7,7 +7,7 @@ export async function restrictBrowserAccess(client) {
   for (const role of ["anon", "authenticated"]) {
     if (rows.some(({ rolname }) => rolname === role)) {
       await client.query(`REVOKE ALL ON TABLE public.users, public.recipes,
-        public.recipe_bookmarks, public.user_sessions FROM ${role}`);
+      public.recipe_bookmarks, public.journal_entries, public.saved_guides, public.user_sessions FROM ${role}`);
     }
   }
 }

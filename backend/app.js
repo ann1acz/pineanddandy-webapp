@@ -1,10 +1,10 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import express from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { rateLimit } from "express-rate-limit";
 import { AuthenticationError } from "./supabase-auth.js";
-import { emailInput, InputError, objectBody, passwordInput, profilePhotoInput, recipeInput, text, usernameInput } from "./validation.js";
+import { emailInput, InputError, journalEntryInput, objectBody, passwordInput, profilePhotoInput, recipeInput, savedGuideInput, text, usernameInput } from "./validation.js";
 
 const PgStore = connectPgSimple(session);
 const profileColumns = "id, email, display_name, username, bio, profile_photo";
@@ -263,6 +263,99 @@ export function createApp({
   // Show the recipes the user has bookmarked.
   app.get("/api/bookmarks", async (request, response) => {
     response.json(await sharedRecipes(request.session.userId, undefined, true));
+  });
+  // Return only journal entries owned by the signed-in user.
+  app.get("/api/journal-entries", async (request, response) => {
+    const result = await pool.query(
+      `SELECT id, entry_date, title, location, notes, created_at, updated_at
+       FROM journal_entries WHERE user_id = $1
+       ORDER BY entry_date DESC, created_at DESC, id`,
+      [request.session.userId],
+    );
+    response.json(result.rows);
+  });
+  // Save a new journal entry for the signed-in user.
+  app.post("/api/journal-entries", async (request, response) => {
+    const entry = journalEntryInput(request.body);
+    const result = await pool.query(
+      `INSERT INTO journal_entries (id, user_id, entry_date, title, location, notes)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, entry_date, title, location, notes, created_at, updated_at`,
+      [randomUUID(), request.session.userId, entry.entry_date, entry.title, entry.location, entry.notes],
+    );
+    response.status(201).json(result.rows[0]);
+  });
+  // Check journal entry IDs before using them in database queries.
+  app.use("/api/journal-entries/:entryId", (request, response, next) => {
+    if (!uuidPattern.test(request.params.entryId)) {
+      response.status(400).json({ error: "Invalid journal entry ID." });
+      return;
+    }
+    next();
+  });
+  // Update a journal entry only when it belongs to the signed-in user.
+  app.put("/api/journal-entries/:entryId", async (request, response) => {
+    const entry = journalEntryInput(request.body);
+    const result = await pool.query(
+      `UPDATE journal_entries
+       SET entry_date = $1, title = $2, location = $3, notes = $4, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5 AND user_id = $6
+       RETURNING id, entry_date, title, location, notes, created_at, updated_at`,
+      [entry.entry_date, entry.title, entry.location, entry.notes, request.params.entryId, request.session.userId],
+    );
+    if (!result.rows[0]) {
+      response.status(404).json({ error: "Journal entry not found." });
+      return;
+    }
+    response.json(result.rows[0]);
+  });
+  // Return only guide links saved by the signed-in user.
+  app.get("/api/saved-guides", async (request, response) => {
+    const result = await pool.query(
+      `SELECT id, title, url, created_at FROM saved_guides
+       WHERE user_id = $1 ORDER BY created_at DESC, id`,
+      [request.session.userId],
+    );
+    response.json(result.rows);
+  });
+  // Save a guide link for the signed-in user.
+  app.post("/api/saved-guides", async (request, response) => {
+    const guide = savedGuideInput(request.body);
+    try {
+      const result = await pool.query(
+        `INSERT INTO saved_guides (id, user_id, title, url, url_hash)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id, title, url, created_at`,
+        [randomUUID(), request.session.userId, guide.title, guide.url,
+          createHash("sha256").update(guide.url).digest("hex")],
+      );
+      response.status(201).json(result.rows[0]);
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "23505") {
+        response.status(409).json({ error: "This guide is already saved." });
+        return;
+      }
+      throw error;
+    }
+  });
+  // Check saved guide IDs before using them in database queries.
+  app.use("/api/saved-guides/:guideId", (request, response, next) => {
+    if (!uuidPattern.test(request.params.guideId)) {
+      response.status(400).json({ error: "Invalid saved guide ID." });
+      return;
+    }
+    next();
+  });
+  // Remove a saved guide link only when it belongs to the signed-in user.
+  app.delete("/api/saved-guides/:guideId", async (request, response) => {
+    const result = await pool.query(
+      "DELETE FROM saved_guides WHERE id = $1 AND user_id = $2 RETURNING id",
+      [request.params.guideId, request.session.userId],
+    );
+    if (!result.rows[0]) {
+      response.status(404).json({ error: "Saved guide not found." });
+      return;
+    }
+    response.status(204).end();
   });
   // Save a new recipe and return it to the frontend.
   app.post("/api/recipes", async (request, response) => {
