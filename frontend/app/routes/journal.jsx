@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { data, Form, useNavigation } from "react-router";
 import { SavedPopup } from "../components/saved-popup";
 import editIcon from "../images/edit_icon.png";
@@ -14,25 +14,6 @@ const localDate = (date) => {
 };
 
 const entryDate = (value) => String(value).slice(0, 10);
-
-function downloadEntry(entry) {
-  const date = entryDate(entry.entry_date);
-  const contents = [
-    entry.title,
-    `Date: ${date}`,
-    entry.location && `Location: ${entry.location}`,
-    "",
-    entry.notes ?? "",
-  ].filter((line) => line !== false).join("\n");
-  const file = new Blob([contents], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(file);
-  const link = document.createElement("a");
-  const filename = entry.title.trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "field-note";
-  link.href = url;
-  link.download = `${filename}-${date}.txt`;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export async function clientLoader() {
   const [entries, savedRecipes, savedGuides] = await Promise.all([
@@ -186,7 +167,6 @@ export default function Journal({ loaderData, actionData }) {
   const [entriesOpen, setEntriesOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
-  const editorRef = useRef(null);
   const [month, setMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -195,10 +175,6 @@ export default function Journal({ loaderData, actionData }) {
   useEffect(() => {
     if (actionData?.saved) setEditingEntry(null);
   }, [actionData]);
-
-  useEffect(() => {
-    if (editingEntry) editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [editingEntry]);
 
   const visibleEntries = selectedDate
     ? entries.filter((entry) => entryDate(entry.entry_date) === selectedDate)
@@ -220,69 +196,72 @@ export default function Journal({ loaderData, actionData }) {
 
       {actionData?.error && !editingEntry && <p className="journal-error" role="alert">{actionData.error}</p>}
       {editingEntry && (
-        <div ref={editorRef}>
-          <EntryEditor
-            key={editingEntry.id ?? "new"}
-            entry={editingEntry.creating ? null : editingEntry}
-            number={entries.length + (editingEntry.creating ? 1 : 0)}
-            busy={busy}
-            error={actionData?.error}
-            onCancel={() => setEditingEntry(null)}
-          />
-        </div>
+        <EntryEditor
+          key={editingEntry.id ?? "new"}
+          entry={editingEntry.creating ? null : editingEntry}
+          number={entries.length + (editingEntry.creating ? 1 : 0)}
+          busy={busy}
+          error={actionData?.error}
+          onCancel={() => setEditingEntry(null)}
+        />
       )}
 
-      <button className="journal-view-all" type="button" onClick={() => setEntriesOpen((open) => !open)}>
-        {entriesOpen ? "Hide entries" : "View all entries"}
-      </button>
-      <button className="journal-calendar-toggle" type="button" onClick={() => setCalendarOpen((open) => !open)}>
-        {calendarOpen ? "Hide calendar" : "View calendar"}
-      </button>
+      <div className="journal-actions">
+        <button
+          className="journal-view-all"
+          type="button"
+          aria-expanded={entriesOpen}
+          onClick={() => setEntriesOpen((open) => !open)}
+        >
+          {entriesOpen ? "Hide entries" : `View entries (${entries.length})`}
+        </button>
+        <button
+          className="journal-view-all"
+          type="button"
+          aria-expanded={calendarOpen}
+          onClick={() => setCalendarOpen((open) => !open)}
+        >
+          {calendarOpen ? "Hide calendar" : "View calendar"}
+        </button>
+      </div>
       {calendarOpen && (
         <MonthCalendar
           entries={entries}
           month={month}
           onMonthChange={setMonth}
           selectedDate={selectedDate}
-          onSelectDate={(date) => {
-            setSelectedDate(date);
-            if (date) setEntriesOpen(true);
-          }}
+          onSelectDate={setSelectedDate}
         />
       )}
 
-      {entriesOpen && <section className="journal-entries" aria-label="Field notes">
-        {visibleEntries.length ? visibleEntries.map((entry) => {
-          const number = entries.length - entries.indexOf(entry);
-          return (
-            <article className="journal-entry-card" key={entry.id}>
-              <div className="journal-entry-actions">
-                <button className="journal-entry-edit" type="button" onClick={() => setEditingEntry(entry)}>
+      {entriesOpen && (
+        <section className="journal-entries" aria-label="Field notes">
+          {visibleEntries.length ? visibleEntries.map((entry) => {
+            const number = entries.length - entries.indexOf(entry);
+            return (
+              <article className="journal-entry-card" key={entry.id}>
+                <button className="journal-entry-edit" type="button" aria-label={`Edit ${entry.title}`} onClick={() => setEditingEntry(entry)}>
                   <img src={editIcon} alt="" />
-                  Edit entry
                 </button>
-                <button className="journal-entry-download" type="button" onClick={() => downloadEntry(entry)}>
-                  Download
-                </button>
-              </div>
-              <div className="journal-entry-overline">
-                <span>Field note</span>
-                <span>No. {String(number).padStart(2, "0")}</span>
-              </div>
-              <h2>{entry.title}</h2>
-              <div className="journal-entry-meta">
-                <time dateTime={entryDate(entry.entry_date)}>
-                  {new Date(`${entryDate(entry.entry_date)}T00:00:00`).toLocaleDateString("en-GB", { dateStyle: "medium" })}
-                </time>
-                {entry.location && <span>{entry.location}</span>}
-              </div>
-              {entry.notes && <p className="journal-entry-notes">{entry.notes}</p>}
-            </article>
-          );
-        }) : (
-          <p className="journal-empty">{selectedDate ? "No field notes for this day." : "Your field notes will appear here. Add your first entry when you head out exploring."}</p>
-        )}
-      </section>}
+                <div className="journal-entry-overline">
+                  <span>Field note</span>
+                  <span>No. {String(number).padStart(2, "0")}</span>
+                </div>
+                <h2>{entry.title}</h2>
+                <div className="journal-entry-meta">
+                  <time dateTime={entryDate(entry.entry_date)}>
+                    {new Date(`${entryDate(entry.entry_date)}T00:00:00`).toLocaleDateString("en-GB", { dateStyle: "medium" })}
+                  </time>
+                  {entry.location && <span>{entry.location}</span>}
+                </div>
+                {entry.notes && <p className="journal-entry-notes">{entry.notes}</p>}
+              </article>
+            );
+          }) : (
+            <p className="journal-empty">{selectedDate ? "No field notes for this day." : "Your field notes will appear here. Add your first entry when you head out exploring."}</p>
+          )}
+        </section>
+      )}
     
       <SavedRecipesSection savedRecipes={savedRecipes} savedGuides={savedGuides} />
       <SavedPopup result={actionData} message="Your field note has been saved!" />
