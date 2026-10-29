@@ -1,10 +1,230 @@
-.page.home-page 
-{ padding-top: 15vh; }
+/* Match the recipes feed's maximum width. */
+.home-mobile {
+  --home-bg: #f8f7ef;
+  --home-text: #2e241f;
+  --home-inset: 24px;
 
-.home-page p 
-{ max-width: 560px; }
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 680px;
+  min-width: 0;
+  margin: 16px auto 0; /* pushes the homepage below the header */
+  padding: 0 0 calc(120px + env(safe-area-inset-bottom, 0px));
 
-@media (max-width: 540px) {
-.page.home-page 
-{ padding-top: 2rem; }
+  background: var(--home-bg);
+  color: var(--home-text);
+  overflow-wrap: anywhere;
+}
+
+.home-mobile *,
+.home-mobile *::before,
+.home-mobile *::after {
+  box-sizing: border-box;
+}
+
+/* Only text sections receive horizontal padding. */
+.home-mobile .home-content-inset {
+  padding-inline: var(--home-inset);
+}
+
+/* Accessible heading for the hero image. */
+.home-mobile .home-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Greeting */
+.home-mobile .home-greeting {
+  margin: 0;
+  padding: 24px var(--home-inset) 28px;
+}
+
+.home-mobile .home-greeting-image {
+  display: block;
+  width: 160px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Hero fills the homepage, not the entire desktop viewport. */
+.home-mobile .home-hero {
+  margin: 0;
+  padding: 0;
+}
+
+.home-mobile .home-hero-link {
+  display: block;
+  width: 100%;
+  line-height: 0;
+}
+
+.home-mobile .home-hero-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0;
+}
+
+/* Section headings */
+.home-mobile .home-section-heading {
+  position: relative;
+  isolation: isolate;
+  display: table;
+  max-width: 100%;
+  margin: 0 0 24px;
+  padding: 14px 6px;
+}
+
+/* Stroke sits behind the heading and extends past the text, as in the design */
+.home-mobile .home-section-heading > img {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: -18px;
+  width: calc(100% + 36px);
+  height: 68px;
+  transform: translateY(-50%);
+  object-fit: fill;
+  opacity: 0.55; /* the PNG is darker than the design, so lighten it */
+  pointer-events: none;
+}
+
+.home-mobile .home-section-heading h2 {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: var(--home-text);
+  font-family: "Londrina Solid", "Raleway", sans-serif;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.home-mobile .home-section-heading--right {
+  margin-left: auto;
+  text-align: right;
+}
+
+/* Featured recipes */
+.home-mobile .home-featured {
+  margin: 0;
+  padding: 36px 0 0;
+}
+
+/* Horizontal row of real recipe cards: swipe on touch, drag with a mouse */
+.home-mobile .home-featured-scroller {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px var(--home-inset) 16px;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--home-inset);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+
+  /* Hide the scrollbar */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.home-mobile .home-featured-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* While dragging: follow the mouse exactly and don't select text */
+.home-mobile .home-featured-scroller.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.home-mobile .home-featured-item {
+  flex: 0 0 min(300px, 80%);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.home-mobile .home-featured-empty {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.home-mobile .home-all-recipes {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.home-mobile .home-all-recipes-link {
+  display: inline-block;
+  max-width: 100%;
+  border-radius: 6px;
+  line-height: 0;
+}
+
+.home-mobile .home-all-recipes-link img {
+  display: block;
+  width: 112px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* About and goals */
+.home-mobile .home-about-background {
+  background-color: #152014;
+  background-image: url("../images/Homepage-backgroundphoto.png");
+  background-position: center;
+  background-size: cover;
+  color: #f8f7ef;
+}
+
+.home-mobile .home-about-background .home-info {
+  margin: 0;
+  padding-top: 40px;
+}
+
+.home-mobile .home-about-background .home-section-heading h2,
+.home-mobile .home-about-background .home-info p {
+  color: #f8f7ef;
+}
+
+.home-mobile .home-about-background .home-info p {
+  max-width: none;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.home-mobile .home-about-background .home-goals {
+  padding-top: 48px;
+  padding-bottom: 72px;
+}
+
+/* Keyboard navigation */
+.home-mobile .home-hero-link:focus-visible,
+.home-mobile .home-all-recipes-link:focus-visible {
+  outline: 3px solid #495f25;
+  outline-offset: -3px;
+}
+
+/* Mobile spacing */
+@media (max-width: 420px) {
+  .home-mobile {
+    --home-inset: 18px;
+  }
+
+  .home-mobile .home-greeting-image {
+    width: 150px;
+  }
 }
