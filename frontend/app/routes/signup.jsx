@@ -4,16 +4,20 @@ import { api, currentProfile, formError } from "../lib/api";
 import "../styles/signup.css";
 
 export async function clientLoader() {
+  // Signed-in users do not need to see the sign-up page.
   if (await currentProfile()) throw redirect("/");
   return null;
 }
 
 export async function clientAction({ request }) {
+  // Read the submitted fields before checking the passwords.
   const form = await request.formData();
+  // Check that both password fields match before sending the form.
   if (form.get("password") !== form.get("confirm_password")) {
     return data({ error: "Passwords do not match." }, { status: 400 });
   }
   try {
+    // Create the account, then send the new user to the start page.
     await api("/auth/register", {
       method: "POST",
       body: JSON.stringify({
@@ -24,11 +28,13 @@ export async function clientAction({ request }) {
     }, false);
     return redirect("/");
   } catch (error) {
+    // Pass registration errors back to the form.
     return formError(error);
   }
 }
 
 export default function Signup({ actionData }) {
+  // Prevent another submission while the first one is still being handled.
   const busy = useNavigation().state !== "idle";
   return (
     <LoginLayout title="Sign up" signup>
@@ -38,6 +44,7 @@ export default function Signup({ actionData }) {
         <label><span className="sr-only">Password</span><input type="password" name="password" placeholder="Password" autoComplete="new-password" minLength={12} maxLength={128} aria-describedby="signup-password-help" required /></label>
         <label><span className="sr-only">Repeat password</span><input type="password" name="confirm_password" placeholder="Repeat password" autoComplete="new-password" minLength={12} maxLength={128} required /></label>
         <p id="signup-password-help" className="auth-password-help">Use between 12 and 128 characters.</p>
+        {/* Show password check errors and server errors in the same place. */}
         {actionData?.error && <p className="auth-error" role="alert">{actionData.error}</p>}
         <button disabled={busy}>{busy ? "Please wait..." : "Sign Up"}</button>
       </Form>

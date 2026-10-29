@@ -23,12 +23,13 @@ CREATE TABLE IF NOT EXISTS recipes (
   description varchar(2000) NOT NULL DEFAULT '',
   ingredients text NOT NULL,
   instructions text NOT NULL,
-  servings integer NOT NULL CHECK (servings BETWEEN 1 AND 100),
   prep_minutes integer NOT NULL CHECK (prep_minutes BETWEEN 0 AND 10080),
   cook_minutes integer NOT NULL CHECK (cook_minutes BETWEEN 0 AND 10080),
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE recipes DROP COLUMN IF EXISTS servings;
 
 CREATE INDEX IF NOT EXISTS recipes_user_id_idx ON recipes(user_id);
 

@@ -14,7 +14,6 @@ export async function saveRecipe(request, recipeId) {
       description: form.get("description"),
       ingredients: form.get("ingredients"),
       instructions: form.get("instructions"),
-      servings: Number(form.get("servings")),
       prep_minutes: Number(form.get("prep_minutes")),
       cook_minutes: Number(form.get("cook_minutes")),
       photos: form.getAll("photos"),
@@ -63,7 +62,6 @@ export function RecipeForm({ recipe, error }) {
     <>
       <Form method="post" className="recipe-entry-form">
         <input type="hidden" name="description" value={recipe?.description ?? ""} />
-        <input type="hidden" name="servings" value={recipe?.servings ?? 2} />
         <input type="hidden" name="prep_minutes" value={recipe?.prep_minutes ?? 0} />
         <label>Name<input name="title" placeholder="Type here..." defaultValue={recipe?.title} maxLength={160} required /></label>
         <label>Visibility
