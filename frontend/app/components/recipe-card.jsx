@@ -8,10 +8,10 @@ import dishIcon from "../images/dish_icon.png";
 import seasonIcon from "../images/season_icon.png";
 import "../styles/recipe-card.css";
 
-export function RecipeCard({ recipe, showEdit = false }) {
+export function RecipeCard({ recipe, showEdit = false, showAuthor = true }) {
   return (
     <article className="feed-card">
-      <div className="feed-author"><img className={recipe.author_photo ? "has-photo" : undefined} src={recipe.author_photo || userIcon} alt="" /><div><span>{recipe.author_name}</span><span className="feed-author-username">@{recipe.author_username}</span></div></div>
+      {showAuthor && <div className="feed-author"><img className={recipe.author_photo ? "has-photo" : undefined} src={recipe.author_photo || userIcon} alt="" /><div><span>{recipe.author_name}</span><span className="feed-author-username">@{recipe.author_username}</span></div></div>}
       {recipe.photos?.[0] && <Link className="feed-photo-link" to={`/recipes/${recipe.id}`}>
         <img className="feed-photo" src={recipe.photos[0]} alt={recipe.title} loading="lazy" />
       </Link>}

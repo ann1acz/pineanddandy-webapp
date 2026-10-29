@@ -12,6 +12,7 @@ export function meta() {
   ];
 }
 
+
 export default function FourOhFour() {
   return (
     <main className="not-found-page">
