@@ -1,0 +1,66 @@
+.not-found-page {
+  width: min(100%, 680px);
+  min-height: max(38rem, calc(100svh - 14.5rem));
+  margin-inline: auto;
+  padding: clamp(5rem, 15vh, 8.5rem) 1.25rem 5rem;
+  background-color: #485b09;
+  background-image: url("../images/login_bg.png");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  color: #fffef8;
+  text-align: center;
+}
+
+.not-found-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.not-found-page h1 {
+  margin: 0;
+  font-family: "Raleway", sans-serif;
+  font-size: clamp(1.4rem, 5vw, 1.65rem);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.not-found-signpost {
+  width: min(78vw, 350px);
+  height: 250px;
+  margin: 1.85rem auto 1.75rem;
+  object-fit: cover;
+  object-position: center;
+}
+
+.not-found-page p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.not-found-home-link {
+  display: inline-flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2.1rem;
+  padding: 0.45rem 1.25rem;
+  border-radius: 0.65rem;
+  background: #bd5e40;
+  color: #fffef8;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.not-found-home-link:hover {
+  background: #a94e34;
+  color: #fffef8;
+}
+
+@media (min-width: 681px) {
+  .not-found-page {
+    background-size: 100% 100%;
+  }
+}

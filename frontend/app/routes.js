@@ -13,4 +13,5 @@ export default [
     route("recipes/:recipeId/edit", "routes/recipe-edit.jsx"),
     route("recipes/:recipeId/bookmark", "routes/recipe-bookmark.jsx"),
   ]),
+  route("*", "routes/fourohfour.jsx"),
 ];
