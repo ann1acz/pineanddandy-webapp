@@ -11,7 +11,19 @@
   justify-content: space-between;
   margin: -3rem -1.5rem 0;
   padding: 1.1rem 1.5rem 0.45rem;
-  border-bottom: 1px solid #352419;
+  border-bottom: 1px solid transparent;
+  position: relative;
+}
+
+.profile-page-heading::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 1px;
+  background: #352419;
+  pointer-events: none;
 }
 
 .profile-page-heading h1 {
@@ -226,6 +238,11 @@
   .profile-page-heading {
     margin: -2rem -1rem 0;
     padding: 1.1rem 1rem 0.45rem;
+  }
+
+  .profile-page-heading::after {
+    left: 1rem;
+    right: 1rem;
   }
 
   .profile-summary {
