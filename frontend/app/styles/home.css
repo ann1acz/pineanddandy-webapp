@@ -9,7 +9,7 @@
   max-width: 680px;
   min-width: 0;
   margin: 16px auto 0; /* pushes the homepage below the header */
-  padding: 0 0 calc(120px + env(safe-area-inset-bottom, 0px));
+  padding: 0;
 
   background: var(--home-bg);
   color: var(--home-text);
@@ -208,7 +208,7 @@
 
 .home-mobile .home-about-background .home-goals {
   padding-top: 48px;
-  padding-bottom: 72px;
+  padding-bottom: 0;
 }
 
 /* Keyboard navigation */

@@ -13,6 +13,7 @@ import "./styles/app.css";
 import { ApiError } from "./lib/api";
 import { Navbar } from "./components/navbar";
 import { Header } from "./components/header";
+import { DisclaimerFooter } from "./components/disclaimer-footer";
 
 export const links = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -42,6 +43,7 @@ export function Layout({ children }) {
         <div className={authPage ? "auth-layout" : "app-layout"}>
           {!authPage && <Header />}
           {children}
+          <DisclaimerFooter />
           {!authPage && <Navbar />}
         </div>
         <ScrollRestoration />

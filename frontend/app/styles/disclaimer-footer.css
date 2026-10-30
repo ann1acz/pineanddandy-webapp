@@ -1,0 +1,56 @@
+.disclaimer-footer
+{ width: 100%;
+margin: 0;
+padding: 0;
+background: transparent;
+color: #fffef8;
+font-family: "Raleway", sans-serif; }
+
+.disclaimer-panel
+{ width: 100%;
+padding: 1rem clamp(1.25rem, 6vw, 2rem) 1.4rem;
+border: 1px solid #b18b5c;
+background:
+  linear-gradient(110deg, #765535e8, #654629e8),
+  radial-gradient(ellipse at 30% 20%, #b4864a44, transparent 70%); }
+
+.disclaimer-footer h2
+{ position: relative;
+isolation: isolate;
+width: fit-content;
+margin: 0 0 .55rem;
+color: #fffef8;
+font-family: Georgia, "Times New Roman", serif;
+font-size: clamp(1.8rem, 7vw, 2.3rem);
+font-weight: 400;
+line-height: 1.1;
+text-transform: uppercase; }
+
+.disclaimer-footer h2::before
+{ position: absolute;
+inset: 10% -8% 2%;
+z-index: -1;
+background: url("../images/Backgroundhome-stroke.png") center / 100% 100% no-repeat;
+content: ""; }
+
+.disclaimer-safety
+{ max-width: 760px;
+margin: 0;
+font-size: clamp(1rem, 4vw, 1.25rem);
+line-height: 1.35; }
+
+.disclaimer-liability
+{ max-width: 760px;
+margin: 1.15rem 0 0;
+font-size: clamp(.72rem, 2.8vw, .9rem);
+line-height: 1.4; }
+
+@media (min-width: 700px) {
+.disclaimer-footer
+{ padding-block: 0; }
+
+.disclaimer-panel
+{ width: min(100% - 3rem, 900px);
+margin-inline: auto;
+padding: 1.4rem 2rem 1.65rem; }
+}
