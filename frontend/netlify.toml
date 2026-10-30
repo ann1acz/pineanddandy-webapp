@@ -4,7 +4,7 @@
   publish = "build/client"
 
 [build.environment]
-  # PORT and NODE_ENV are plain config values ("3001", "production") that legitimately
+  # PORT and NODE_ENV are plain config values (, "production") that legitimately
   # appear in source and in the client bundle; they are not secrets. Real secrets
   # (Supabase keys, SESSION_SECRET, DATABASE_URL) remain scanned.
   SECRETS_SCAN_OMIT_KEYS = "PORT,NODE_ENV"
