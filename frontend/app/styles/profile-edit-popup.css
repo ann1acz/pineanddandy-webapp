@@ -1,0 +1,191 @@
+.profile-photo-edit {
+  display: grid;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  margin: 0.25rem 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: #fffef8e8;
+  cursor: pointer;
+}
+
+.profile-photo-edit img {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+}
+
+.profile-photo-edit:hover {
+  background: #e9e6d9;
+}
+
+.profile-edit-popup {
+  width: min(92vw, 420px);
+  max-height: 90dvh;
+  /* the global reset removes the browser margin that centers dialogs, so put it back */
+  margin: auto;
+  padding: 1.4rem 1.5rem 1.6rem;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 1rem;
+  background: #fdfbee;
+  color: #2e241f;
+}
+
+.profile-edit-popup::backdrop {
+  background: #0007;
+}
+
+.profile-edit-popup-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  padding: 0.1rem 0.6rem;
+  border: 0;
+  background: transparent;
+  color: #2e241f;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.profile-edit-popup-close:hover {
+  background: #e9e6d9;
+  color: #2e241f;
+}
+
+.profile-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.profile-edit-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.profile-edit-form input,
+.profile-edit-form textarea {
+  border-radius: 0.65rem;
+  background: #fffef8;
+}
+
+.profile-edit-form .muted,
+.profile-edit-form .error,
+.profile-edit-form [role="status"] {
+  margin: 0;
+}
+
+.profile-edit-form > .secondary {
+  align-self: flex-start;
+}
+
+.profile-edit-photo {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.profile-edit-photo .profile-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.85rem;
+  background: #deddd4;
+  object-fit: cover;
+}
+
+.profile-edit-photo-button {
+  position: absolute;
+  right: -0.8rem;
+  bottom: -0.7rem;
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: #b95739;
+  cursor: pointer;
+}
+
+.profile-edit-photo-button img {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  /* the pencil icon is dark, this makes it white so it shows on the orange box */
+  filter: brightness(0) invert(1);
+}
+
+.profile-edit-photo-button:hover {
+  background: #9d432b;
+}
+
+.profile-badges-note {
+  margin: -0.8rem 0 0;
+  font-size: 0.85rem;
+}
+
+.profile-edit-badges {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-edit-badges li {
+  display: grid;
+  min-height: 2.3rem;
+  place-items: center;
+}
+
+.profile-edit-badges img {
+  width: 2.2rem;
+  height: 2.2rem;
+  object-fit: contain;
+}
+
+.profile-badge-slot {
+  color: #d4cdb6;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.profile-save-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-end;
+  padding: 0.5rem 0.95rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: #b95739;
+  color: #fffef8;
+}
+
+.profile-save-button:hover {
+  background: #9d432b;
+  color: #fffef8;
+}
+
+.profile-save-button img {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+}
+
+@media (max-width: 370px) {
+  .profile-photo-edit {
+    flex-basis: 2rem;
+    width: 2rem;
+    height: 2rem;
+  }
+}

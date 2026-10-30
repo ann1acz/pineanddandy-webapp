@@ -20,10 +20,6 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 
 await pool.query("SELECT id, auth_user_id FROM users LIMIT 0");
-const pendingMigration = await pool.query("SELECT COUNT(*) AS count FROM users WHERE auth_user_id IS NULL");
-if (Number(pendingMigration.rows[0].count) > 0) {
-  throw new Error("Existing accounts need migration. Stop the app and run npm run auth:migrate from the repository root.");
-}
 await pool.query("SELECT id FROM recipes LIMIT 0");
 await pool.query("SELECT sid FROM user_sessions LIMIT 0");
 try {

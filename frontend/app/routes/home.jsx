@@ -12,8 +12,8 @@ import brushStroke from "../images/Backgroundhome-stroke.png";
 
 export async function clientLoader() {
   if (!await currentProfile()) throw redirect("/signup");
-  const recipes = await api("/feed");
-  return { recipes: recipes.slice(0, 6) };
+  const recipes = await api("/feed?limit=6");
+  return { recipes };
 }
 
 export function meta() {
@@ -194,6 +194,24 @@ export default function Home({ loaderData }) {
             year, and gives you a place to save and share them. It is not an
             identification guide, so we always remind you to be sure of a plant
             before you eat it.
+          </p>
+        </section>
+
+        <section
+          className="home-info home-disclaimer home-content-inset"
+          aria-labelledby="home-disclaimer-title"
+        >
+          <SectionHeading id="home-disclaimer-title">Disclaimer</SectionHeading>
+
+          <p className="home-disclaimer-lead">
+            Only consume what you can identify with absolute certainty. When in
+            doubt, leave it out.
+          </p>
+
+          <p className="home-disclaimer-note">
+            Pine &amp; Dandy shall not be held liable for any injury, harm, or
+            loss arising from the use of this app or the consumption of any
+            foraged items.
           </p>
         </section>
       </div>

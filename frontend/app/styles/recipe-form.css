@@ -177,6 +177,7 @@ font-size: .75rem; }
 .recipe-form-actions button:hover
 { background: #9d432b; }
 
-.recipe-form-actions svg
+.recipe-form-actions button img
 { width: 16px;
-height: 16px; }
+height: 16px;
+object-fit: contain; }

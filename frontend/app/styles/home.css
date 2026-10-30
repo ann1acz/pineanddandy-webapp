@@ -208,7 +208,39 @@
 
 .home-mobile .home-about-background .home-goals {
   padding-top: 48px;
-  padding-bottom: 72px;
+}
+
+/* Disclaimer card at the bottom of the page */
+.home-mobile .home-about-background .home-disclaimer {
+  margin: 48px 16px 0;
+  padding-top: 28px;
+  padding-bottom: 32px;
+  border-radius: 10px;
+  /* orange rectangle over the photo background, #DD985F at 40% */
+  background-color: rgb(221 152 95 / 0.4);
+}
+
+/* the dark photo background keeps going below the card, like in the design */
+.home-mobile .home-about-background {
+  padding-bottom: 110px;
+}
+
+/* the mock uses serif capital letters for this heading */
+.home-mobile .home-disclaimer .home-section-heading h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.home-mobile .home-about-background .home-info .home-disclaimer-lead {
+  margin: 0 0 28px;
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.home-mobile .home-about-background .home-info .home-disclaimer-note {
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /* Keyboard navigation */

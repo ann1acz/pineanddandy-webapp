@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY,
   email text NOT NULL UNIQUE,
-  password_hash text,
   display_name varchar(80) NOT NULL,
   bio varchar(1000) NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -10,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username varchar(40);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text NOT NULL DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_user_id uuid;
-ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+ALTER TABLE users DROP COLUMN IF EXISTS password_hash;
 CREATE UNIQUE INDEX IF NOT EXISTS users_auth_user_id_idx ON users(auth_user_id);
 UPDATE users SET username = 'user_' || replace(id::text, '-', '') WHERE username IS NULL;
 ALTER TABLE users ALTER COLUMN username SET NOT NULL;
@@ -23,13 +22,13 @@ CREATE TABLE IF NOT EXISTS recipes (
   description varchar(2000) NOT NULL DEFAULT '',
   ingredients text NOT NULL,
   instructions text NOT NULL,
-  prep_minutes integer NOT NULL CHECK (prep_minutes BETWEEN 0 AND 10080),
   cook_minutes integer NOT NULL CHECK (cook_minutes BETWEEN 0 AND 10080),
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 ALTER TABLE recipes DROP COLUMN IF EXISTS servings;
+ALTER TABLE recipes DROP COLUMN IF EXISTS prep_minutes;
 
 CREATE INDEX IF NOT EXISTS recipes_user_id_idx ON recipes(user_id);
 

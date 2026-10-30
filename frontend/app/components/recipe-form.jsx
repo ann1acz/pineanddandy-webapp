@@ -2,6 +2,7 @@ import { Form, Link, useNavigation } from "react-router";
 import { useState } from "react";
 import { api } from "../lib/api";
 import { normalizeRecipeCategories, recipeCategoryOptions } from "../lib/recipe-filters";
+import saveIcon from "../images/save_icon.png";
 import "../styles/recipe-form.css";
 
 export async function saveRecipe(request, recipeId) {
@@ -14,7 +15,6 @@ export async function saveRecipe(request, recipeId) {
       description: form.get("description"),
       ingredients: form.get("ingredients"),
       instructions: form.get("instructions"),
-      prep_minutes: Number(form.get("prep_minutes")),
       cook_minutes: Number(form.get("cook_minutes")),
       photos: form.getAll("photos"),
       plant_types: form.getAll("plant_types"),
@@ -62,7 +62,6 @@ export function RecipeForm({ recipe, error }) {
     <>
       <Form method="post" className="recipe-entry-form">
         <input type="hidden" name="description" value={recipe?.description ?? ""} />
-        <input type="hidden" name="prep_minutes" value={recipe?.prep_minutes ?? 0} />
         <label>Name<input name="title" placeholder="Type here..." defaultValue={recipe?.title} maxLength={160} required /></label>
         <label>Visibility
           <select className="recipe-visibility" name="visibility" defaultValue={recipe?.visibility ?? "private"}>
@@ -103,7 +102,7 @@ export function RecipeForm({ recipe, error }) {
         <div className="recipe-form-actions">
           <Link to={recipe ? `/recipes/${recipe.id}` : "/recipes"}>Cancel</Link>
           <button disabled={busy || reading}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M5 3h12l4 4v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2Z" /><path d="M7 3v6h10V3M7 21v-8h10v8" /></svg>
+            <img src={saveIcon} alt="" />
             {busy ? "Saving..." : "Save recipe"}
           </button>
         </div>
