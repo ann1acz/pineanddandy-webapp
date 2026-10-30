@@ -134,7 +134,7 @@ export function createApp({
       }
       const existing = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
       if (existing.rows.length) {
-        throw new AuthenticationError("Your account needs migration. Ask the project owner to run auth:migrate.", 409);
+        throw new AuthenticationError("This email already belongs to an unlinked profile. Contact the project owner.", 409);
       }
       const metadata = objectBody(verified.user.user_metadata);
       const username = usernameInput(metadata);
@@ -250,6 +250,8 @@ export function createApp({
     }
     return result.rows.filter((recipe) => !bookmarkedOnly || saved.has(recipe.id)).map((recipe) => ({
       ...recipe,
+      // Lists only show the first photo, so skip sending the rest of the large photo data.
+      photos: recipeId ? recipe.photos : recipe.photos.slice(0, 1),
       bookmark_count: counts.get(recipe.id) ?? 0,
       bookmarked: saved.has(recipe.id),
       is_owner: recipe.user_id === userId,
@@ -258,7 +260,10 @@ export function createApp({
   // Show public recipes in the community feed.
   app.get("/api/feed", async (request, response) => {
     const recipes = await sharedRecipes(request.session.userId);
-    response.json(recipes.filter((recipe) => recipe.visibility === "public"));
+    const feed = recipes.filter((recipe) => recipe.visibility === "public");
+    // Pages can ask for only the newest few recipes instead of downloading the whole feed.
+    const limit = Number(request.query.limit);
+    response.json(Number.isInteger(limit) && limit > 0 ? feed.slice(0, limit) : feed);
   });
   // Show the recipes the user has bookmarked.
   app.get("/api/bookmarks", async (request, response) => {
@@ -363,11 +368,11 @@ export function createApp({
     // $1, $2, etc. match the values in the list below. RETURNING * gives back the saved recipe.
     const result = await pool.query(
       `INSERT INTO recipes
-       (id, user_id, title, description, ingredients, instructions, prep_minutes, cook_minutes,
+       (id, user_id, title, description, ingredients, instructions, cook_minutes,
         photos, plant_types, dish_types, seasons, dietary_restrictions, visibility)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [randomUUID(), request.session.userId, recipe.title, recipe.description,
-        recipe.ingredients, recipe.instructions, recipe.prep_minutes, recipe.cook_minutes,
+        recipe.ingredients, recipe.instructions, recipe.cook_minutes,
         JSON.stringify(recipe.photos), JSON.stringify(recipe.plant_types), JSON.stringify(recipe.dish_types),
         JSON.stringify(recipe.seasons), JSON.stringify(recipe.dietary_restrictions), recipe.visibility],
     );
@@ -419,12 +424,12 @@ export function createApp({
     const recipe = recipeInput(request.body);
     const result = await pool.query(
       `UPDATE recipes SET title = $1, description = $2, ingredients = $3, instructions = $4,
-       prep_minutes = $5, cook_minutes = $6,
-       photos = $7, plant_types = $8, dish_types = $9, seasons = $10, dietary_restrictions = $11, visibility = $12,
+       cook_minutes = $5,
+       photos = $6, plant_types = $7, dish_types = $8, seasons = $9, dietary_restrictions = $10, visibility = $11,
        updated_at = CURRENT_TIMESTAMP
-       WHERE id = $13 AND user_id = $14 RETURNING *`,
+       WHERE id = $12 AND user_id = $13 RETURNING *`,
       [recipe.title, recipe.description, recipe.ingredients, recipe.instructions,
-        recipe.prep_minutes, recipe.cook_minutes, JSON.stringify(recipe.photos),
+        recipe.cook_minutes, JSON.stringify(recipe.photos),
         JSON.stringify(recipe.plant_types), JSON.stringify(recipe.dish_types),
         JSON.stringify(recipe.seasons), JSON.stringify(recipe.dietary_restrictions), recipe.visibility,
         request.params.recipeId, request.session.userId,

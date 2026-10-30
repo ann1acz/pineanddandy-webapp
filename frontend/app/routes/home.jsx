@@ -5,15 +5,14 @@ import { RecipeCard } from "../components/recipe-card";
 import "../styles/recipe-card.css";
 import "../styles/home.css";
 
-import heroImage from "../images/Heroimage-homepage.png";
+import heroImage from "../images/Hero-image.png";
 import greetingBubbleImage from "../images/Homepage-(Hi Forager).png";
-import allRecipesButtonImage from "../images/Allrecipe-buttonhome.png";
 import brushStroke from "../images/Backgroundhome-stroke.png";
 
 export async function clientLoader() {
   if (!await currentProfile()) throw redirect("/signup");
-  const recipes = await api("/feed");
-  return { recipes: recipes.slice(0, 6) };
+  const recipes = await api("/feed?limit=6");
+  return { recipes };
 }
 
 export function meta() {
@@ -114,18 +113,17 @@ export default function Home({ loaderData }) {
         />
       </div>
 
-      {/* The exported image already contains the heading and button. */}
+      {/*  hero image  and button  */}
       <section className="home-hero" aria-labelledby="home-hero-title">
-        <h1 id="home-hero-title" className="home-visually-hidden">
-          A walk away from fulfilling food
+        <img src={heroImage} alt="" className="home-hero-image" />
+
+        <h1 id="home-hero-title" className="home-hero-title">
+          A walk away from fulfilling food{" "}
+          <span aria-hidden="true">˚𓍢ִ❀</span>
         </h1>
 
-        <Link
-          to="/recipes"
-          className="home-hero-link"
-          aria-label="Explore recipes"
-        >
-          <img src={heroImage} alt="" className="home-hero-image" />
+        <Link to="/recipes" className="home-hero-cta">
+          Explore Recipes
         </Link>
       </section>
 
@@ -159,7 +157,7 @@ export default function Home({ loaderData }) {
             className="home-all-recipes-link"
             aria-label="View all recipes"
           >
-            <img src={allRecipesButtonImage} alt="" />
+            All Recipes <span aria-hidden="true">→</span>
           </Link>
         </div>
       </section>
@@ -194,6 +192,24 @@ export default function Home({ loaderData }) {
             year, and gives you a place to save and share them. It is not an
             identification guide, so we always remind you to be sure of a plant
             before you eat it.
+          </p>
+        </section>
+
+        <section
+          className="home-info home-disclaimer home-content-inset"
+          aria-labelledby="home-disclaimer-title"
+        >
+          <SectionHeading id="home-disclaimer-title">Disclaimer</SectionHeading>
+
+          <p className="home-disclaimer-lead">
+            Only consume what you can identify with absolute certainty. When in
+            doubt, leave it out.
+          </p>
+
+          <p className="home-disclaimer-note">
+            Pine &amp; Dandy shall not be held liable for any injury, harm, or
+            loss arising from the use of this app or the consumption of any
+            foraged items.
           </p>
         </section>
       </div>

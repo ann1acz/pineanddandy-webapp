@@ -7,7 +7,6 @@ import { newDb } from "pg-mem";
 import request from "supertest";
 import { createApp } from "./app.js";
 import { AuthenticationError } from "./supabase-auth.js";
-import { migrateAccount } from "./migrate-auth.js";
 import { InputError, recipeInput } from "./validation.js";
 
 const secret = "test-only-session-secret-not-for-deployment";
@@ -19,7 +18,6 @@ const recipe = {
   description: "A quick dinner",
   ingredients: "200g pasta\n1 lemon",
   instructions: "Boil pasta.\nAdd lemon.",
-  prep_minutes: 5,
   cook_minutes: 12,
 };
 let pool;
@@ -87,12 +85,9 @@ test("sign-up persists a profile and establishes a session, login and logout wor
   const agent = request.agent(app);
   const signup = await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
   assert.equal(signup.body.email, alice.email);
-  assert.equal(signup.body.password_hash, undefined);
   const cookies = signup.headers["set-cookie"];
   assert.match(String(cookies), /HttpOnly/);
   assert.match(String(cookies), /SameSite=Lax/);
-  const stored = await pool.query("SELECT password_hash FROM users");
-  assert.equal(stored.rows[0].password_hash, null);
   assert.equal(signup.body.access_token, undefined);
   assert.equal(signup.body.refresh_token, undefined);
   await agent.get("/api/profile").expect(200);
@@ -217,47 +212,6 @@ test("login recovers a successful Auth signup whose local profile creation faile
   assert.equal((await agent.get("/api/profile").expect(200)).body.id, login.body.id);
 });
 
-test("migration preserves profile IDs, recipes and bookmarks and skips unrelated Auth accounts", async () => {
-  const agent = request.agent(app);
-  const signup = await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
-  const id = signup.body.id;
-  const created = await agent.post("/api/recipes").set(...header).send(recipe).expect(201);
-  await agent.put(`/api/recipes/${created.body.id}/bookmark`).set(...header).expect(204);
-  await pool.query("UPDATE users SET auth_user_id = NULL, password_hash = $1 WHERE id = $2", ["legacy-hash", id]);
-  const profile = { id, email: alice.email };
-  const authUsers = [];
-  const authId = randomUUID();
-  let createdCount = 0;
-  const admin = {
-    async createUser(input) {
-      createdCount++;
-      assert.equal(input.email_confirm, true);
-      assert.deepEqual(input.app_metadata, { legacy_profile_id: id });
-      assert.equal(input.password, alice.password);
-      return { data: { user: { id: authId, email: alice.email, app_metadata: input.app_metadata } } };
-    },
-    async updateUserById(id, input) {
-      assert.equal(id, authId);
-      assert.equal(input.password, alice.password);
-      return { data: {} };
-    },
-  };
-  await assert.rejects(migrateAccount(pool, admin, profile, alice.password, [{
-    id: randomUUID(), email: alice.email, app_metadata: {},
-  }]), /unrelated/);
-  assert.equal(createdCount, 0);
-  await migrateAccount(pool, admin, profile, alice.password, authUsers);
-  // A retry after a remote create/local database failure reuses only our migration-marked identity.
-  await migrateAccount(pool, admin, profile, alice.password, authUsers);
-  assert.equal(createdCount, 1);
-  const stored = (await pool.query("SELECT * FROM users WHERE id = $1", [id])).rows[0];
-  assert.equal(stored.auth_user_id, authId);
-  assert.equal(stored.password_hash, "legacy-hash");
-  assert.equal(stored.display_name, alice.display_name);
-  assert.equal((await pool.query("SELECT user_id FROM recipes")).rows[0].user_id, id);
-  assert.equal((await pool.query("SELECT user_id FROM recipe_bookmarks")).rows[0].user_id, id);
-});
-
 test("private endpoints require login and mutations require the application header", async () => {
   await request(app).get("/api/recipes").expect(401);
   await request(app).get("/api/profile").expect(401);
@@ -296,7 +250,7 @@ test("another user cannot list, read, update or delete private recipes", async (
   await owner.get(`/api/recipes/${id}`).expect(200);
 });
 
-test("profile updates are scoped to the signed-in user and do not expose password hashes", async () => {
+test("profile updates are scoped to the signed-in user", async () => {
   const agent = request.agent(app);
   await agent.post("/api/auth/register").set(...header).send(alice).expect(201);
   const updated = await agent.patch("/api/profile").set(...header)
@@ -304,7 +258,6 @@ test("profile updates are scoped to the signed-in user and do not expose passwor
   assert.equal(updated.body.display_name, "Alice Cook");
   assert.equal(updated.body.bio, "I love baking.");
   assert.equal(updated.body.email, alice.email);
-  assert.equal(updated.body.password_hash, undefined);
   assert.equal((await agent.get("/api/profile").expect(200)).body.bio, "I love baking.");
 });
 
@@ -316,7 +269,6 @@ test("input validation rejects malformed profiles, recipes and IDs", async () =>
   for (const invalid of [
     { ...recipe, title: " " },
     { ...recipe, ingredients: "" },
-    { ...recipe, prep_minutes: -1 },
     { ...recipe, cook_minutes: 10081 },
     { ...recipe, title: "x".repeat(161) },
   ]) {
@@ -454,6 +406,18 @@ test("recipe schema migration can run again without removing saved recipes", asy
   assert.equal(listed.body.length, 1);
   assert.deepEqual(listed.body[0].photos, [photo]);
   assert.equal(listed.body[0].servings, undefined);
+});
+
+test("user schema migration removes the legacy password hash column", async () => {
+  await pool.query("ALTER TABLE users ADD COLUMN password_hash text");
+  const schema = await readFile(new URL("./schema.sql", import.meta.url), "utf8");
+  for (const statement of schema.split(";").filter((statement) => statement.trim().startsWith("ALTER TABLE"))) {
+    await pool.query(statement);
+  }
+  const columns = await pool.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_name = 'users'",
+  );
+  assert.equal(columns.rows.some((column) => column.column_name === "password_hash"), false);
 });
 
 test("public feed shares only published recipes while mutations stay owner-only", async () => {

@@ -11,7 +11,19 @@
   justify-content: space-between;
   margin: -3rem -1.5rem 0;
   padding: 1.1rem 1.5rem 0.45rem;
-  border-bottom: 1px solid #352419;
+  border-bottom: 1px solid transparent;
+  position: relative;
+}
+
+.profile-page-heading::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 1px;
+  background: #352419;
+  pointer-events: none;
 }
 
 .profile-page-heading h1 {
@@ -22,40 +34,11 @@
   line-height: 1.25;
 }
 
-.profile-settings-button {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  padding: 0.45rem;
-  border: 0;
-  background: transparent;
-  color: #352419;
-}
-
-.profile-settings-button:hover {
-  background: #e9e6d9;
-  color: #352419;
-}
-
-.profile-settings-button svg {
-  width: 1.5rem;
-  height: 1.5rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-}
-
-.profile-form {
-  margin: 1.8rem 0 0;
-}
-
 .profile-summary {
   display: flex;
   align-items: flex-start;
   gap: 1.25rem;
+  margin: 1.8rem 0 0;
 }
 
 .profile-avatar-wrap {
@@ -72,28 +55,6 @@
   border-radius: 0.85rem;
   background: #deddd4;
   object-fit: cover;
-}
-
-.profile-photo-edit {
-  display: grid;
-  flex: 0 0 2.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  place-items: center;
-  margin: 0.25rem 0 0 auto;
-  border-radius: 0.4rem;
-  background: #fffef8e8;
-  cursor: pointer;
-}
-
-.profile-photo-edit img {
-  width: 1.5rem;
-  height: 1.5rem;
-  object-fit: contain;
-}
-
-.profile-photo-edit:hover {
-  background: #e9e6d9;
 }
 
 .profile-details {
@@ -141,31 +102,6 @@
   font-size: 1rem;
   line-height: 1.3;
   overflow-wrap: anywhere;
-}
-
-.profile-edit-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin: 1.5rem 0 2rem;
-  padding: 1rem;
-  border: 1px solid #d8d4c7;
-  border-radius: 0.75rem;
-  background: #fffef8;
-}
-
-.profile-edit-fields[hidden] {
-  display: none;
-}
-
-.profile-edit-fields .muted,
-.profile-edit-fields .error,
-.profile-edit-fields [role="status"] {
-  margin: 0;
-}
-
-.profile-edit-fields > button {
-  align-self: flex-start;
 }
 
 .profile-section {
@@ -218,14 +154,15 @@
   margin-top: 2.5rem;
 }
 
-.profile-page .logout {
-  margin-top: 2rem;
-}
-
 @media (max-width: 540px) {
   .profile-page-heading {
     margin: -2rem -1rem 0;
     padding: 1.1rem 1rem 0.45rem;
+  }
+
+  .profile-page-heading::after {
+    left: 1rem;
+    right: 1rem;
   }
 
   .profile-summary {
@@ -277,11 +214,5 @@
 
   .profile-details h2 {
     font-size: 1.05rem;
-  }
-
-  .profile-photo-edit {
-    flex-basis: 2rem;
-    width: 2rem;
-    height: 2rem;
   }
 }

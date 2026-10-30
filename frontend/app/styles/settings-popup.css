@@ -1,0 +1,116 @@
+.profile-settings-button {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: #352419;
+}
+
+.profile-settings-button:hover {
+  background: #e9e6d9;
+  color: #352419;
+}
+
+.profile-settings-button img {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+}
+
+.settings-popup {
+  width: min(92vw, 420px);
+  max-height: 90dvh;
+  /* the global reset removes the browser margin that centers dialogs, so put it back */
+  margin: auto;
+  padding: 1.4rem 1.5rem 1.6rem;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 1rem;
+  background: #fdfbee;
+  color: #2e241f;
+}
+
+.settings-popup::backdrop {
+  background: #0007;
+}
+
+.settings-popup-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  padding: 0.1rem 0.6rem;
+  border: 0;
+  background: transparent;
+  color: #2e241f;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.settings-popup-close:hover {
+  background: #e9e6d9;
+  color: #2e241f;
+}
+
+.settings-popup h2 {
+  margin: 0 0 1.3rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.settings-menu {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 0.3rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  font-size: 1.05rem;
+  text-align: left;
+}
+
+.settings-menu button:hover {
+  background: #e9e6d9;
+  color: inherit;
+}
+
+.settings-menu img {
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: contain;
+}
+
+.settings-arrow {
+  margin-left: auto;
+  font-size: 1.25rem;
+}
+
+.settings-logout {
+  margin-top: 2.75rem;
+  text-align: center;
+}
+
+.settings-logout button {
+  border: 0;
+  background: transparent;
+  color: #b95739;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.settings-logout button:hover {
+  background: transparent;
+  color: #9d432b;
+}
