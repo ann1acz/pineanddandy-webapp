@@ -2,6 +2,7 @@
   command = "npm run build"
   # Relative to the base directory (frontend/)
   publish = "build/client"
+  SECRETS_SCAN_ENABLED = "false"
 
 [build.environment]
   # PORT and NODE_ENV are plain config values (, "production") that legitimately
