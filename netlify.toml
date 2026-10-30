@@ -4,10 +4,14 @@
   publish = "frontend/build/client"
 
 [build.environment]
-  # Ignore non-secret config values without disabling credential scanning.
   SECRETS_SCAN_OMIT_KEYS = "PORT,NODE_ENV"
 
-# SPA mode (ssr: false): serve index.html for client-side routes
+[[redirects]]
+  from = "/api/*"
+  to = "https://pineanddandy-webapp-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
