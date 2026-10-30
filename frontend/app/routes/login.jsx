@@ -21,7 +21,7 @@ export async function clientAction({ request }) {
         password: form.get("password"),
       }),
     }, false);
-    return redirect("/recipes");
+    return redirect("/home");
   } catch (error) {
     // Pass the error back so the form can show what went wrong.
     return formError(error);
